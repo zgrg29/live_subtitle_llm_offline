@@ -37,21 +37,42 @@ BUNDLE_ROOT = bundle_dir()
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.toml"
 DEFAULT_API_PATH = PROJECT_ROOT / "api.toml"
 
-# 千问 MT 接受的语言英文名（与参考项目 src/livesub/languages.py 的 MT_NAMES 一致）
-LANGUAGE_NAMES = {
-    "ja": "Japanese",
-    "zh": "Chinese",
-    "en": "English",
-    "ko": "Korean",
-}
+# 可选语言 = 千问 MT 支持的语言 ∩ Chrome Web Speech 能识别的语言。
+# 数据来自参考项目 src/livesub/languages.py（同一份 Qwen MT 语言表），
+# browser 是 Chrome 语音识别要的 BCP-47 标记。默认 日本語 → 中文。
+# 顺序：日语/中文/英语/韩语在前，其余按拉丁字母。
+LANGUAGES = (
+    {"code": "ja", "mt": "Japanese", "label": "日本語", "browser": "ja-JP"},
+    {"code": "zh", "mt": "Chinese", "label": "中文", "browser": "zh-CN"},
+    {"code": "en", "mt": "English", "label": "English", "browser": "en-US"},
+    {"code": "ko", "mt": "Korean", "label": "한국어", "browser": "ko-KR"},
+    {"code": "ar", "mt": "Arabic", "label": "العربية", "browser": "ar-SA"},
+    {"code": "yue", "mt": "Cantonese", "label": "粵語", "browser": "zh-HK"},
+    {"code": "cs", "mt": "Czech", "label": "Čeština", "browser": "cs-CZ"},
+    {"code": "da", "mt": "Danish", "label": "Dansk", "browser": "da-DK"},
+    {"code": "fi", "mt": "Finnish", "label": "Suomi", "browser": "fi-FI"},
+    {"code": "fr", "mt": "French", "label": "Français", "browser": "fr-FR"},
+    {"code": "de", "mt": "German", "label": "Deutsch", "browser": "de-DE"},
+    {"code": "hi", "mt": "Hindi", "label": "हिन्दी", "browser": "hi-IN"},
+    {"code": "is", "mt": "Icelandic", "label": "Íslenska", "browser": "is-IS"},
+    {"code": "id", "mt": "Indonesian", "label": "Bahasa Indonesia", "browser": "id-ID"},
+    {"code": "it", "mt": "Italian", "label": "Italiano", "browser": "it-IT"},
+    {"code": "ms", "mt": "Malay", "label": "Bahasa Melayu", "browser": "ms-MY"},
+    {"code": "pl", "mt": "Polish", "label": "Polski", "browser": "pl-PL"},
+    {"code": "pt", "mt": "Portuguese", "label": "Português", "browser": "pt-BR"},
+    {"code": "ru", "mt": "Russian", "label": "Русский", "browser": "ru-RU"},
+    {"code": "es", "mt": "Spanish", "label": "Español", "browser": "es-ES"},
+    {"code": "sv", "mt": "Swedish", "label": "Svenska", "browser": "sv-SE"},
+    {"code": "th", "mt": "Thai", "label": "ไทย", "browser": "th-TH"},
+    {"code": "tr", "mt": "Turkish", "label": "Türkçe", "browser": "tr-TR"},
+    {"code": "uk", "mt": "Ukrainian", "label": "Українська", "browser": "uk-UA"},
+    {"code": "vi", "mt": "Vietnamese", "label": "Tiếng Việt", "browser": "vi-VN"},
+)
 
-# 浏览器语音识别用的 BCP-47 语言标记
-BROWSER_LANGUAGES = {
-    "ja": "ja-JP",
-    "zh": "zh-CN",
-    "en": "en-US",
-    "ko": "ko-KR",
-}
+LANGUAGE_NAMES = {item["code"]: item["mt"] for item in LANGUAGES}
+BROWSER_LANGUAGES = {item["code"]: item["browser"] for item in LANGUAGES}
+LANGUAGE_LABELS = {item["code"]: item["label"] for item in LANGUAGES}
+LANGUAGE_CODES = tuple(item["code"] for item in LANGUAGES)
 
 DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
 

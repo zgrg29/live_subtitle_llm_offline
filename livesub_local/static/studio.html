@@ -3,44 +3,62 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LiveSub Local · 字幕スタジオ</title>
+<title>LiveSub Local</title>
 <link rel="stylesheet" href="/static/ui.css">
 <link rel="stylesheet" href="/static/subtitle.css">
 </head>
 <body>
 <header class="appbar">
-  <a class="brand" href="/studio">LiveSub Local <small>字幕スタジオ</small></a>
+  <a class="brand" href="/studio">LiveSub Local <small data-i18n="brand.sub">字幕スタジオ</small></a>
   <span class="spacer"></span>
-  <div class="theme-switch" role="group" aria-label="外観">
-    <button class="theme-opt" type="button" data-theme-opt="light" title="ライト" aria-pressed="false">☀</button>
-    <button class="theme-opt" type="button" data-theme-opt="dark" title="ダーク" aria-pressed="false">☾</button>
-    <button class="theme-opt" type="button" data-theme-opt="auto" title="自動" aria-pressed="true">A</button>
+  <div class="lang-wrap">
+    <select class="lang-select" id="ui-lang" data-i18n-aria="lang.aria">
+      <option value="ja">日本語</option>
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+  <div class="theme-switch" role="group" data-i18n-aria="nav.theme">
+    <button class="theme-opt" type="button" data-theme-opt="light" data-i18n-aria="theme.light" aria-pressed="false">☀</button>
+    <button class="theme-opt" type="button" data-theme-opt="dark" data-i18n-aria="theme.dark" aria-pressed="false">☾</button>
+    <button class="theme-opt" type="button" data-theme-opt="auto" data-i18n-aria="theme.auto" aria-pressed="true">A</button>
   </div>
 </header>
 
 <main class="shell">
   <p class="eyebrow">Subtitle studio</p>
-  <h1>字幕スタジオ</h1>
-  <p class="lead">マイクを選び、字幕を整えて、OBS につなぎます。
-    <span class="badge">日本語 → 中文</span></p>
+  <h1 data-i18n="title">字幕スタジオ</h1>
+  <p class="lead"><span data-i18n="lead">マイクを選び、字幕を整えて、OBS につなぎます。</span>
+    <span class="badge" id="direction">日本語 → 中文</span></p>
 
-  <div id="banner" class="alert warn" hidden></div>
+  <div id="banner" class="alert warn" hidden data-i18n="mock.banner"></div>
 
   <div class="layout">
     <div class="stack">
 
       <section class="card">
-        <h2>音声と配信</h2>
+        <h2 data-i18n="card.audio">音声と配信</h2>
         <div class="grid">
           <div class="field">
-            <label for="device">マイク</label>
+            <label for="source" data-i18n="field.source">認識言語（話す言語）</label>
+            <select id="source"></select>
+          </div>
+          <div class="field">
+            <label for="target" data-i18n="field.target">訳文の言語</label>
+            <select id="target"></select>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="device" data-i18n="field.device">マイク</label>
             <div class="row">
               <select id="device"></select>
-              <button class="btn btn-secondary btn-sm" id="refresh-devices" type="button">更新</button>
+              <button class="btn btn-secondary btn-sm" id="refresh-devices" type="button" data-i18n="btn.refresh">更新</button>
             </div>
           </div>
           <div class="field">
-            <label for="gain">入力ゲイン</label>
+            <label for="gain" data-i18n="field.gain">入力ゲイン</label>
             <div class="row">
               <input type="range" id="gain" min="0.1" max="4" step="0.1" value="1">
               <output id="gain-o">1.0×</output>
@@ -50,10 +68,10 @@
 
         <div class="meter-box">
           <div class="meter-head">
-            <label for="mic-check">入力レベル</label>
+            <label for="mic-check" data-i18n="meter.level">入力レベル</label>
             <span class="row" style="gap:8px">
-              <span class="badge" id="mic-state">待機中</span>
-              <output id="mic-db">マイク入力を待っています</output>
+              <span class="badge" id="mic-state" data-i18n="meter.idle">待機中</span>
+              <output id="mic-db" data-i18n="meter.waiting">マイク入力を待っています</output>
             </span>
           </div>
           <div class="meter">
@@ -63,7 +81,7 @@
           <div class="meter-scale"><span>-60</span><span>-36</span><span>-18</span><span>0 dB</span></div>
 
           <div class="field" style="margin:16px 0 0">
-            <label for="threshold">発話しきい値（この音量を超えたら「発話中」）</label>
+            <label for="threshold" data-i18n="meter.threshold">発話しきい値（この音量を超えたら「発話中」）</label>
             <div class="row">
               <input type="range" id="threshold" min="-60" max="-10" step="1">
               <output id="threshold-o"></output>
@@ -71,45 +89,43 @@
           </div>
 
           <div class="btn-row" style="margin-top:8px">
-            <button class="btn btn-secondary" id="mic-check" type="button">マイクを停止</button>
+            <button class="btn btn-secondary" id="mic-check" type="button" data-i18n="btn.micStop">マイクを停止</button>
           </div>
-          <p class="hint" style="margin-top:10px">起動するとマイクを自動で開きます。音声はブラウザ内で認識され、外部には送られません。
-            しきい値はメーター上の目安で、認識のタイミング自体は Chrome が決めます。</p>
+          <p class="hint" style="margin-top:10px" data-i18n="hint.mic">起動するとマイクを自動で開きます。音声はブラウザ内で認識され、外部には送られません。しきい値はメーター上の目安で、認識のタイミング自体は Chrome が決めます。</p>
         </div>
 
         <div class="btn-row" style="margin-top:20px">
-          <button class="btn" id="start" type="button">字幕を開始</button>
-          <button class="btn btn-secondary" id="stop" type="button" disabled>停止</button>
+          <button class="btn" id="start" type="button" data-i18n="btn.start">字幕を開始</button>
+          <button class="btn btn-secondary" id="stop" type="button" disabled data-i18n="btn.stop">停止</button>
         </div>
-        <p class="hint" id="status">未開始。「字幕を開始」を押すと、ブラウザがマイクの使用許可を求めます。</p>
+        <p class="hint" id="status" data-i18n="status.idle">未開始。「字幕を開始」を押すと、ブラウザがマイクの使用許可を求めます。</p>
       </section>
 
       <section class="card">
-        <h2>翻訳エンジン</h2>
+        <h2 data-i18n="card.engine">翻訳エンジン</h2>
         <div class="field">
-          <label for="region">Qwen のリージョン</label>
+          <label for="region" data-i18n="engine.region">Qwen のリージョン</label>
           <select id="region">
-            <option value="cn">中国本土（北京）</option>
-            <option value="intl">海外（シンガポール）</option>
+            <option value="cn" data-i18n="engine.cn">中国本土（北京）</option>
+            <option value="intl" data-i18n="engine.intl">海外（シンガポール）</option>
           </select>
-          <p class="hint" style="margin-top:8px">API キーはリージョンごとに発行されます。海外アカウントのキーは
-            「海外」を選んでください。配信中は切り替えできません。</p>
+          <p class="hint" style="margin-top:8px" data-i18n="engine.hint">API キーはリージョンごとに発行されます。海外アカウントのキーは「海外」を選んでください。配信中は切り替えできません。</p>
         </div>
         <div class="row">
-          <button class="btn btn-secondary" id="test-engine" type="button">接続テスト</button>
+          <button class="btn btn-secondary" id="test-engine" type="button" data-i18n="btn.test">接続テスト</button>
           <span class="hint" id="engine-status">—</span>
         </div>
       </section>
 
       <section class="card">
-        <h2>字幕スタイル</h2>
-        <p class="hint">ここで変えた見た目は、そのまま OBS のプレビューに反映されます（再読み込み不要）。</p>
+        <h2 data-i18n="card.style">字幕スタイル</h2>
+        <p class="hint" data-i18n="hint.style">ここで変えた見た目は、そのまま OBS のプレビューに反映されます（再読み込み不要）。</p>
 
         <div class="sample-box" style="margin-top:14px">
           <div id="preview" class="sub-stage" data-position="bottom">
             <div class="sub-pair">
-              <div class="sub-source">こんにちは、配信へようこそ。</div>
-              <div class="sub-target">你好，欢迎来到直播间。</div>
+              <div class="sub-source" data-i18n="sample.source">こんにちは、配信へようこそ。</div>
+              <div class="sub-target" data-i18n="sample.target">你好，欢迎来到直播间。</div>
             </div>
           </div>
         </div>
@@ -117,82 +133,82 @@
         <form id="style-form" style="margin-top:20px" autocomplete="off">
           <div class="grid">
             <div class="field wide">
-              <label for="font_family">フォント</label>
+              <label for="font_family" data-i18n="field.font">フォント</label>
               <input id="font_family" maxlength="160" placeholder='"Hiragino Sans", "Yu Gothic UI", sans-serif'>
-              <p class="hint" style="margin-top:8px">ブラウザと OBS の両方に入っているフォント名を、カンマ区切りで。</p>
+              <p class="hint" style="margin-top:8px" data-i18n="hint.font">ブラウザと OBS の両方に入っているフォント名を、カンマ区切りで。</p>
             </div>
             <div class="field">
-              <label for="target_size">訳文の文字サイズ</label>
+              <label for="target_size" data-i18n="field.targetSize">訳文の文字サイズ</label>
               <div class="row"><input type="range" id="target_size" min="12" max="140"><output id="target_size-o"></output></div>
             </div>
             <div class="field">
-              <label for="source_size">原文の文字サイズ</label>
+              <label for="source_size" data-i18n="field.sourceSize">原文の文字サイズ</label>
               <div class="row"><input type="range" id="source_size" min="10" max="120"><output id="source_size-o"></output></div>
             </div>
             <div class="field">
-              <label for="target_color">訳文の文字色</label>
+              <label for="target_color" data-i18n="field.targetColor">訳文の文字色</label>
               <input type="color" id="target_color">
             </div>
             <div class="field">
-              <label for="source_color">原文の文字色</label>
+              <label for="source_color" data-i18n="field.sourceColor">原文の文字色</label>
               <input type="color" id="source_color">
             </div>
             <div class="field">
-              <label for="outline_color">縁取りの色</label>
+              <label for="outline_color" data-i18n="field.outlineColor">縁取りの色</label>
               <input type="color" id="outline_color">
             </div>
             <div class="field">
-              <label for="outline_width">縁取りの太さ</label>
+              <label for="outline_width" data-i18n="field.outlineWidth">縁取りの太さ</label>
               <div class="row"><input type="range" id="outline_width" min="0" max="12"><output id="outline_width-o"></output></div>
             </div>
             <div class="field">
-              <label for="background_color">背景色</label>
+              <label for="background_color" data-i18n="field.bgColor">背景色</label>
               <input type="color" id="background_color">
             </div>
             <div class="field">
-              <label for="background_alpha">背景の不透明度</label>
+              <label for="background_alpha" data-i18n="field.bgAlpha">背景の不透明度</label>
               <div class="row"><input type="range" id="background_alpha" min="0" max="100"><output id="background_alpha-o"></output></div>
             </div>
             <div class="field">
-              <label for="position">表示位置</label>
+              <label for="position" data-i18n="field.position">表示位置</label>
               <select id="position">
-                <option value="bottom">下</option>
-                <option value="top">上</option>
+                <option value="bottom" data-i18n="opt.bottom">下</option>
+                <option value="top" data-i18n="opt.top">上</option>
               </select>
             </div>
             <div class="field">
-              <label for="pairs">表示する文数（現在の文を含む）</label>
+              <label for="pairs" data-i18n="field.pairs">表示する組数（現在の文を含む）</label>
               <div class="row"><input type="range" id="pairs" min="2" max="6" step="1"><output id="pairs-o"></output></div>
             </div>
             <div class="field">
-              <label for="order">並び順</label>
+              <label for="order" data-i18n="field.order">並び順</label>
               <select id="order">
-                <option value="bottom">新しい文が下</option>
-                <option value="top">新しい文が上</option>
+                <option value="bottom" data-i18n="opt.orderBottom">新しい文が下</option>
+                <option value="top" data-i18n="opt.orderTop">新しい文が上</option>
               </select>
             </div>
             <div class="field">
-              <label for="margin_percent">端からの距離</label>
+              <label for="margin_percent" data-i18n="field.margin">端からの距離</label>
               <div class="row"><input type="range" id="margin_percent" min="0" max="45"><output id="margin_percent-o"></output></div>
             </div>
             <div class="field">
-              <label for="line_gap">行間</label>
+              <label for="line_gap" data-i18n="field.lineGap">行間</label>
               <div class="row"><input type="range" id="line_gap" min="0" max="40"><output id="line_gap-o"></output></div>
             </div>
             <div class="field">
-              <label for="clear_after_ms">字幕を残す秒数（0 = 消さない）</label>
+              <label for="clear_after_ms" data-i18n="field.clearAfter">字幕を残す秒数（0 = 消さない）</label>
               <div class="row"><input type="range" id="clear_after_ms" min="0" max="30000" step="500"><output id="clear_after_ms-o"></output></div>
             </div>
             <div class="field">
-              <label for="show_source">原文を表示する</label>
+              <label for="show_source" data-i18n="field.showSource">原文を表示する</label>
               <select id="show_source">
-                <option value="true">表示する</option>
-                <option value="false">表示しない</option>
+                <option value="true" data-i18n="opt.show">表示する</option>
+                <option value="false" data-i18n="opt.hide">表示しない</option>
               </select>
             </div>
           </div>
           <div class="btn-row" style="margin-top:6px">
-            <button class="btn btn-secondary" id="reset-style" type="button">既定に戻す</button>
+            <button class="btn btn-secondary" id="reset-style" type="button" data-i18n="btn.resetStyle">既定に戻す</button>
           </div>
         </form>
       </section>
@@ -201,26 +217,25 @@
     <aside class="stack">
       <section class="card">
         <h2>OBS</h2>
-        <p class="hint">OBS → ソース → ブラウザ → 下の URL。幅 1920 / 高さ 1080、背景は透明。</p>
+        <p class="hint" data-i18n="hint.obs">OBS → ソース → ブラウザ → 下の URL。幅 1920 / 高さ 1080、背景は透明。</p>
         <code class="url" id="obs-url"></code>
         <div class="btn-row" style="margin-top:14px">
-          <button class="btn btn-secondary" id="copy" type="button">URL をコピー</button>
-          <button class="btn btn-secondary" id="open" type="button">プレビューを開く</button>
+          <button class="btn btn-secondary" id="copy" type="button" data-i18n="btn.copyUrl">URL をコピー</button>
+          <button class="btn btn-secondary" id="open" type="button" data-i18n="btn.openPreview">プレビューを開く</button>
         </div>
       </section>
 
       <details class="card">
-        <summary>OBS 字幕の見た目を変える（AI 用プロンプト）</summary>
-        <p class="hint">上のスタイルで足りないときは、このプロンプトを AI に渡して CSS を作り、
-          OBS の「カスタム CSS」欄に貼ります。</p>
+        <summary data-i18n="prompt.title">OBS 字幕の見た目を変える（AI 用プロンプト）</summary>
+        <p class="hint" data-i18n="prompt.hint">上のスタイルで足りないときは、このプロンプトを AI に渡して CSS を作り、OBS の「カスタム CSS」欄に貼ります。</p>
         <ol class="hint" style="margin:10px 0 14px 1.2em;padding:0">
-          <li>ソース → ブラウザ → プロパティ →「カスタム CSS」欄を開きます。</li>
-          <li>プロンプトをコピーし、最終行を自分の希望に書き換えて AI に渡します。</li>
-          <li>返ってきた CSS を貼り付けて「OK」。変化がないときは !important の抜けを確認。</li>
+          <li data-i18n="prompt.step1">ソース → ブラウザ → プロパティ →「カスタム CSS」欄を開きます。</li>
+          <li data-i18n="prompt.step2">プロンプトをコピーし、最終行を自分の希望に書き換えて AI に渡します。</li>
+          <li data-i18n="prompt.step3">返ってきた CSS を貼り付けて「OK」。変化がないときは !important の抜けを確認。</li>
         </ol>
         <div class="row" style="justify-content:space-between;margin-bottom:8px">
-          <span class="hint">プロンプト</span>
-          <button class="btn btn-secondary btn-sm" id="copy-prompt" type="button">コピー</button>
+          <span class="hint" data-i18n="prompt.label">プロンプト（日本語）</span>
+          <button class="btn btn-secondary btn-sm" id="copy-prompt" type="button" data-i18n="btn.copyPrompt">コピー</button>
         </div>
         <pre class="prompt" id="css-prompt">あなたは LiveSub Local の OBS 字幕ページ用の CSS を書きます。
 
@@ -243,16 +258,16 @@
 6. 合計 4KB 以内。CSS だけを出力し、説明は書かない
 
 【希望のデザイン】この行を自分の希望に置き換える</pre>
-        <p class="hint" style="margin-top:10px">※ 非公式のカスタマイズです。ページ更新で調整が必要になる場合があります。</p>
+        <p class="hint" style="margin-top:10px" data-i18n="prompt.note">※ 非公式のカスタマイズです。ページ更新で調整が必要になる場合があります。</p>
       </details>
 
       <details class="card">
-        <summary>デバッグ：音声なしで 1 文だけ送る</summary>
+        <summary data-i18n="debug.title">デバッグ：音声なしで 1 文だけ送る</summary>
         <div class="row" style="margin-top:4px">
-          <input type="text" id="debug-text" placeholder="例：こんにちは、今日はいい天気ですね">
-          <button class="btn btn-secondary" id="debug-send" type="button">送信</button>
+          <input type="text" id="debug-text" data-i18n-ph="debug.placeholder" placeholder="例：こんにちは、今日はいい天気ですね">
+          <button class="btn btn-secondary" id="debug-send" type="button" data-i18n="btn.send">送信</button>
         </div>
-        <p class="hint" style="margin-top:10px">「確定した文」として送られ、実際の翻訳キューを通ります。先に「字幕を開始」を押してください。</p>
+        <p class="hint" style="margin-top:10px" data-i18n="debug.hint">「確定した文」として送られ、実際の翻訳キューを通ります。先に「字幕を開始」を押してください。</p>
       </details>
     </aside>
   </div>
@@ -262,17 +277,292 @@
 <script>
 (function () {
   "use strict";
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var SOURCE_LANG = "ja", TARGET_LANG = "zh", BROWSER_LANG = "ja-JP";
-  var MAX_CHARS = 14, PAUSE_MS = 800, CAP_MS = 2500;
 
+  var I18N = {
+    ja: {
+      "brand.sub": "字幕スタジオ",
+      "lang.aria": "表示言語",
+      "nav.theme": "外観",
+      "theme.light": "ライト", "theme.dark": "ダーク", "theme.auto": "自動",
+      "title": "字幕スタジオ",
+      "lead": "マイクを選び、字幕を整えて、OBS につなぎます。",
+      "mock.banner": "Qwen の API Key が未設定です。いまは mock のダミー訳文が出ます。api.toml の qwen.api_key を入れて、サービスを再起動してください。",
+      "card.audio": "音声と配信", "card.engine": "翻訳エンジン", "card.style": "字幕スタイル",
+      "field.source": "認識言語（話す言語）", "field.target": "訳文の言語",
+      "field.device": "マイク", "field.gain": "入力ゲイン",
+      "meter.level": "入力レベル", "meter.threshold": "発話しきい値（この音量を超えたら「発話中」）",
+      "meter.idle": "待機中", "meter.waiting": "マイク入力を待っています",
+      "meter.speaking": "発話中", "meter.silent": "無音", "meter.nom": "マイク未接続",
+      "btn.refresh": "更新", "btn.micStart": "マイクを確認", "btn.micStop": "マイクを停止",
+      "btn.start": "字幕を開始", "btn.stop": "停止", "btn.resetStyle": "既定に戻す",
+      "btn.copyUrl": "URL をコピー", "btn.openPreview": "プレビューを開く",
+      "btn.copyPrompt": "コピー", "btn.send": "送信", "btn.test": "接続テスト",
+      "hint.mic": "起動するとマイクを自動で開きます。音声はブラウザ内で認識され、外部には送られません。しきい値はメーター上の目安で、認識のタイミング自体は Chrome が決めます。",
+      "hint.style": "ここで変えた見た目は、そのまま OBS のプレビューに反映されます（再読み込み不要）。",
+      "hint.obs": "OBS → ソース → ブラウザ → 下の URL。幅 1920 / 高さ 1080、背景は透明。",
+      "hint.font": "ブラウザと OBS の両方に入っているフォント名を、カンマ区切りで。",
+      "field.font": "フォント", "field.targetSize": "訳文の文字サイズ", "field.sourceSize": "原文の文字サイズ",
+      "field.targetColor": "訳文の文字色", "field.sourceColor": "原文の文字色",
+      "field.outlineColor": "縁取りの色", "field.outlineWidth": "縁取りの太さ",
+      "field.bgColor": "背景色", "field.bgAlpha": "背景の不透明度",
+      "field.position": "表示位置", "field.pairs": "表示する組数（現在の文を含む）",
+      "field.order": "並び順", "field.margin": "端からの距離", "field.lineGap": "行間",
+      "field.clearAfter": "字幕を残す秒数（0 = 消さない）", "field.showSource": "原文を表示する",
+      "opt.bottom": "下", "opt.top": "上", "opt.orderBottom": "新しい文が下", "opt.orderTop": "新しい文が上",
+      "opt.show": "表示する", "opt.hide": "表示しない",
+      "unit.seconds": " 秒", "unit.percent": "%", "unit.pairs": " 組",
+      "engine.region": "Qwen のリージョン", "engine.cn": "中国本土（北京）", "engine.intl": "海外（シンガポール）",
+      "engine.hint": "API キーはリージョンごとに発行されます。海外アカウントのキーは「海外」を選んでください。配信中は切り替えできません。",
+      "engine.mock": "mock（API キー未設定）", "engine.testing": "テスト中…",
+      "engine.ok": "OK：", "engine.failed": "失敗：",
+      "status.idle": "未開始。「字幕を開始」を押すと、ブラウザがマイクの使用許可を求めます。",
+      "status.connecting": "ローカルサービスに接続中…",
+      "status.listening": "認識中です。話してください。",
+      "status.stopped": "停止しました。",
+      "status.disconnected": "接続が切れました。",
+      "status.unreachable": "ローカルサービスに接続できません。コンソール画面が開いているか確認してください。",
+      "status.noSR": "このブラウザは音声認識に対応していません。Chrome か Edge を使ってください。",
+      "status.sameLang": "認識言語と訳文の言語は同じにできません。",
+      "status.micDenied": "マイクが拒否されました。アドレスバー左の設定から許可してください。",
+      "status.recogError": "認識エラー：{code}",
+      "status.debugSent": "送信しました：{text}",
+      "status.startFirst": "先に「字幕を開始」を押してください。",
+      "status.saveFailed": "スタイルを保存できませんでした。",
+      "status.resetOk": "スタイルを既定に戻しました。",
+      "status.resetFailed": "既定に戻せませんでした。",
+      "status.loadFailed": "設定を読み込めませんでした。",
+      "status.urlCopied": "OBS の URL をコピーしました。",
+      "status.copyFailed": "コピーできませんでした。手動で選択してください。",
+      "status.devicesRefreshed": "デバイス一覧を更新しました。",
+      "status.micFailed": "マイクを使えませんでした：{message}（「マイクを確認」で再試行できます）",
+      "status.regionChanged": "リージョンを切り替えました：{region}",
+      "status.regionBusy": "配信中は変更できません",
+      "status.regionFailed": "切り替えに失敗しました",
+      "status.testOk": "接続テストに成功しました（{engine}）。",
+      "status.testFailed": "接続テストに失敗しました：{error}",
+      "status.testNet": "失敗：通信エラー",
+      "prompt.title": "OBS 字幕の見た目を変える（AI 用プロンプト）",
+      "prompt.hint": "上のスタイルで足りないときは、このプロンプトを AI に渡して CSS を作り、OBS の「カスタム CSS」欄に貼ります。",
+      "prompt.step1": "ソース → ブラウザ → プロパティ →「カスタム CSS」欄を開きます。",
+      "prompt.step2": "プロンプトをコピーし、最終行を自分の希望に書き換えて AI に渡します。",
+      "prompt.step3": "返ってきた CSS を貼り付けて「OK」。変化がないときは !important の抜けを確認。",
+      "prompt.label": "プロンプト（日本語）", "prompt.note": "※ 非公式のカスタマイズです。ページ更新で調整が必要になる場合があります。",
+      "debug.title": "デバッグ：音声なしで 1 文だけ送る",
+      "debug.placeholder": "例：こんにちは、今日はいい天気ですね",
+      "debug.hint": "「確定した文」として送られ、実際の翻訳キューを通ります。先に「字幕を開始」を押してください。",
+      "sample.source": "こんにちは、配信へようこそ。", "sample.target": "你好，欢迎来到直播间。"
+    },
+    zh: {
+      "brand.sub": "字幕工作台",
+      "lang.aria": "界面语言",
+      "nav.theme": "外观",
+      "theme.light": "浅色", "theme.dark": "深色", "theme.auto": "跟随系统",
+      "title": "字幕工作台",
+      "lead": "选择麦克风、调整字幕样式，然后连到 OBS。",
+      "mock.banner": "没有读到千问 API Key。现在显示的是 mock 占位译文。把 api.toml 里的 qwen.api_key 填上，重启服务即可。",
+      "card.audio": "声音与推流", "card.engine": "翻译引擎", "card.style": "字幕样式",
+      "field.source": "识别语言（你说的语言）", "field.target": "译文语言",
+      "field.device": "麦克风", "field.gain": "输入增益",
+      "meter.level": "输入电平", "meter.threshold": "发声阈值（超过这个音量算「说话中」）",
+      "meter.idle": "待机", "meter.waiting": "等待麦克风输入",
+      "meter.speaking": "说话中", "meter.silent": "静音", "meter.nom": "麦克风未连接",
+      "btn.refresh": "刷新", "btn.micStart": "检测麦克风", "btn.micStop": "停止麦克风",
+      "btn.start": "开始字幕", "btn.stop": "停止", "btn.resetStyle": "恢复默认",
+      "btn.copyUrl": "复制 URL", "btn.openPreview": "打开预览",
+      "btn.copyPrompt": "复制", "btn.send": "发送", "btn.test": "连接测试",
+      "hint.mic": "打开页面会自动开启麦克风。音频只在浏览器内识别，不会上传。阈值只是电平表上的参考线，识别时机由 Chrome 决定。",
+      "hint.style": "这里改的样式会立刻反映到 OBS 预览，不需要刷新。",
+      "hint.obs": "OBS → 来源 → 浏览器 → 填下面的 URL。宽 1920 / 高 1080，背景透明。",
+      "hint.font": "浏览器和 OBS 所在电脑都要装的字体名，用逗号分隔。",
+      "field.font": "字体", "field.targetSize": "译文字号", "field.sourceSize": "原文字号",
+      "field.targetColor": "译文颜色", "field.sourceColor": "原文颜色",
+      "field.outlineColor": "描边颜色", "field.outlineWidth": "描边宽度",
+      "field.bgColor": "背景色", "field.bgAlpha": "背景不透明度",
+      "field.position": "显示位置", "field.pairs": "显示组数（含当前句）",
+      "field.order": "排列方向", "field.margin": "距边缘距离", "field.lineGap": "行距",
+      "field.clearAfter": "字幕保留秒数（0 = 不消失）", "field.showSource": "显示原文",
+      "opt.bottom": "下", "opt.top": "上", "opt.orderBottom": "新句在下", "opt.orderTop": "新句在上",
+      "opt.show": "显示", "opt.hide": "不显示",
+      "unit.seconds": " 秒", "unit.percent": "%", "unit.pairs": " 组",
+      "engine.region": "千问区域", "engine.cn": "中国大陆（北京）", "engine.intl": "海外（新加坡）",
+      "engine.hint": "API Key 按区域签发：海外账号的 Key 请选「海外」。直播中不能切换。",
+      "engine.mock": "mock（未配置 Key）", "engine.testing": "测试中…",
+      "engine.ok": "成功：", "engine.failed": "失败：",
+      "status.idle": "未开始。点「开始字幕」后，浏览器会请求麦克风权限。",
+      "status.connecting": "正在连接本地服务…",
+      "status.listening": "识别中，请开始说话。",
+      "status.stopped": "已停止。",
+      "status.disconnected": "连接已断开。",
+      "status.unreachable": "连不上本地服务，检查控制台窗口是否还在运行。",
+      "status.noSR": "这个浏览器不支持语音识别，请用 Chrome 或 Edge。",
+      "status.sameLang": "识别语言和译文语言不能相同。",
+      "status.micDenied": "麦克风被拒绝。请在地址栏左侧允许麦克风。",
+      "status.recogError": "识别出错：{code}",
+      "status.debugSent": "已发送：{text}",
+      "status.startFirst": "请先点「开始字幕」。",
+      "status.saveFailed": "样式保存失败。",
+      "status.resetOk": "已恢复默认样式。",
+      "status.resetFailed": "恢复默认失败。",
+      "status.loadFailed": "设置读取失败。",
+      "status.urlCopied": "已复制 OBS 地址。",
+      "status.copyFailed": "复制失败，请手动选择。",
+      "status.devicesRefreshed": "设备列表已刷新。",
+      "status.micFailed": "无法使用麦克风：{message}（点「检测麦克风」可重试）",
+      "status.regionChanged": "已切换区域：{region}",
+      "status.regionBusy": "直播中不能切换",
+      "status.regionFailed": "切换失败",
+      "status.testOk": "连接测试成功（{engine}）。",
+      "status.testFailed": "连接测试失败：{error}",
+      "status.testNet": "失败：网络错误",
+      "prompt.title": "自定义 OBS 字幕外观（AI 提示词）",
+      "prompt.hint": "上面的样式不够用时，把这段提示词交给 AI 生成 CSS，再贴进 OBS 的「自定义 CSS」栏。",
+      "prompt.step1": "打开 来源 → 浏览器 → 属性，找到「自定义 CSS」。",
+      "prompt.step2": "复制提示词，把最后一行改成你的想法，交给 AI。",
+      "prompt.step3": "粘贴返回的 CSS 点「确定」；没变化先检查是不是漏了 !important。",
+      "prompt.label": "提示词（日语）", "prompt.note": "※ 非官方玩法：页面更新后可能需要跟着调整。",
+      "debug.title": "调试：不发语音，直接送一句文字",
+      "debug.placeholder": "例如：こんにちは、今日はいい天気ですね",
+      "debug.hint": "会以「定稿句」发送，走真实翻译队列。需要先点「开始字幕」。",
+      "sample.source": "こんにちは、配信へようこそ。", "sample.target": "你好，欢迎来到直播间。"
+    },
+    en: {
+      "brand.sub": "Subtitle studio",
+      "lang.aria": "Interface language",
+      "nav.theme": "Appearance",
+      "theme.light": "Light", "theme.dark": "Dark", "theme.auto": "Auto",
+      "title": "Subtitle studio",
+      "lead": "Pick your microphone, style the captions, then connect OBS.",
+      "mock.banner": "No Qwen API key found. Captions show mock placeholder text. Put your key in api.toml and restart.",
+      "card.audio": "Audio and streaming", "card.engine": "Translation engine", "card.style": "Caption style",
+      "field.source": "Speech language", "field.target": "Translate into",
+      "field.device": "Microphone", "field.gain": "Input gain",
+      "meter.level": "Input level", "meter.threshold": "Speech threshold (above this counts as speaking)",
+      "meter.idle": "Idle", "meter.waiting": "Waiting for microphone",
+      "meter.speaking": "Speaking", "meter.silent": "Silent", "meter.nom": "No microphone",
+      "btn.refresh": "Refresh", "btn.micStart": "Check microphone", "btn.micStop": "Stop microphone",
+      "btn.start": "Start captions", "btn.stop": "Stop", "btn.resetStyle": "Reset to defaults",
+      "btn.copyUrl": "Copy URL", "btn.openPreview": "Open preview",
+      "btn.copyPrompt": "Copy", "btn.send": "Send", "btn.test": "Connection test",
+      "hint.mic": "The microphone opens automatically. Audio is recognised inside the browser and never uploaded. The threshold is a guide on the meter; Chrome decides when recognition starts.",
+      "hint.style": "Changes appear in the OBS preview immediately, with no reload.",
+      "hint.obs": "OBS → Sources → Browser → paste the URL below. 1920×1080, transparent background.",
+      "hint.font": "Font names must exist on both this browser and the OBS machine; separate with commas.",
+      "field.font": "Font family", "field.targetSize": "Translation size", "field.sourceSize": "Source size",
+      "field.targetColor": "Translation colour", "field.sourceColor": "Source colour",
+      "field.outlineColor": "Outline colour", "field.outlineWidth": "Outline width",
+      "field.bgColor": "Background colour", "field.bgAlpha": "Background opacity",
+      "field.position": "Position", "field.pairs": "Sentences shown (incl. current)",
+      "field.order": "Stacking order", "field.margin": "Edge margin", "field.lineGap": "Line gap",
+      "field.clearAfter": "Keep captions for (0 = never hide)", "field.showSource": "Show source text",
+      "opt.bottom": "Bottom", "opt.top": "Top", "opt.orderBottom": "Newest at bottom", "opt.orderTop": "Newest at top",
+      "opt.show": "Show", "opt.hide": "Hide",
+      "unit.seconds": " s", "unit.percent": "%", "unit.pairs": " sentences",
+      "engine.region": "Qwen region", "engine.cn": "Mainland China (Beijing)", "engine.intl": "International (Singapore)",
+      "engine.hint": "API keys are issued per region. Use International for overseas accounts. Not switchable while streaming.",
+      "engine.mock": "mock (no API key)", "engine.testing": "Testing…",
+      "engine.ok": "OK: ", "engine.failed": "Failed: ",
+      "status.idle": "Not started. Press Start captions and allow the microphone.",
+      "status.connecting": "Connecting to the local service…",
+      "status.listening": "Listening. Start speaking.",
+      "status.stopped": "Stopped.",
+      "status.disconnected": "Connection lost.",
+      "status.unreachable": "Cannot reach the local service. Is the console window still running?",
+      "status.noSR": "This browser has no speech recognition. Use Chrome or Edge.",
+      "status.sameLang": "Speech and target languages must differ.",
+      "status.micDenied": "Microphone denied. Allow it from the address bar.",
+      "status.recogError": "Recognition error: {code}",
+      "status.debugSent": "Sent: {text}",
+      "status.startFirst": "Press Start captions first.",
+      "status.saveFailed": "Could not save the style.",
+      "status.resetOk": "Style reset to defaults.",
+      "status.resetFailed": "Could not reset the style.",
+      "status.loadFailed": "Could not load settings.",
+      "status.urlCopied": "OBS URL copied.",
+      "status.copyFailed": "Copy failed. Select the text manually.",
+      "status.devicesRefreshed": "Device list refreshed.",
+      "status.micFailed": "Microphone unavailable: {message} (press Check microphone to retry)",
+      "status.regionChanged": "Region switched: {region}",
+      "status.regionBusy": "Cannot switch while streaming",
+      "status.regionFailed": "Switch failed",
+      "status.testOk": "Connection test succeeded ({engine}).",
+      "status.testFailed": "Connection test failed: {error}",
+      "status.testNet": "Failed: network error",
+      "prompt.title": "Restyle the OBS captions (AI prompt)",
+      "prompt.hint": "When the controls above are not enough, give this prompt to an AI and paste the CSS it returns into OBS's Custom CSS field.",
+      "prompt.step1": "Open Source → Browser → Properties and find the Custom CSS box.",
+      "prompt.step2": "Copy the prompt, replace the last line with your idea, and give it to an AI.",
+      "prompt.step3": "Paste the CSS and click OK. If nothing changes, check for a missing !important.",
+      "prompt.label": "Prompt (Japanese)", "prompt.note": "Unofficial customisation: a page update may require adjusting the CSS.",
+      "debug.title": "Debug: send one sentence without speaking",
+      "debug.placeholder": "e.g. こんにちは、今日はいい天気ですね",
+      "debug.hint": "Sent as a finished sentence through the real translation queue. Press Start captions first.",
+      "sample.source": "こんにちは、配信へようこそ。", "sample.target": "你好，欢迎来到直播间。"
+    }
+  };
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var MAX_CHARS = 14, PAUSE_MS = 800, CAP_MS = 2500;
   var $ = function (id) { return document.getElementById(id); };
+  var LANG = "ja";
+
+  function t(key, params) {
+    var table = I18N[LANG] || I18N.ja;
+    var text = table[key];
+    if (text === undefined) text = I18N.ja[key];
+    if (text === undefined) return key;
+    if (params) {
+      Object.keys(params).forEach(function (name) {
+        text = text.replace(new RegExp("\\{" + name + "\\}", "g"), params[name]);
+      });
+    }
+    return text;
+  }
+
   var display = null;
   var saveTimer = null;
   var socket = null, rec = null, running = false;
   var seq = 0, draft = "", finalTimer = null, flushed = 0;
   var openId = 0, openText = "", phrase = -1, openAt = 0, heartbeat = null;
   var meter = { stream: null, ctx: null, analyser: null, gainNode: null, raf: 0 };
+  var browserLocales = {};
+  var languageLabels = {};
+  var statusState = { key: "status.idle", params: null, kind: "" };
+  var engineInfo = null;
+
+  function applyLanguage(lang, persist) {
+    LANG = I18N[lang] ? lang : "ja";
+    document.documentElement.lang = LANG === "zh" ? "zh-CN" : LANG;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-i18n]"), function (el) {
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-i18n-ph]"), function (el) {
+      el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-i18n-aria]"), function (el) {
+      var label = t(el.getAttribute("data-i18n-aria"));
+      el.setAttribute("aria-label", label);
+      el.setAttribute("title", label);
+    });
+    if (persist) {
+      try { localStorage.setItem("livesub-ui-lang", LANG); } catch (err) {}
+    }
+    renderStatus();
+    updateDirectionBadge();
+    updateEngineStatus();
+    updateThresholdLine();
+  }
+
+  /* ---------------- 状態表示 ---------------- */
+  function say(key, kind, params) {
+    statusState = { key: key, params: params || null, kind: kind || "" };
+    renderStatus();
+  }
+
+  function renderStatus() {
+    var el = $("status");
+    el.textContent = t(statusState.key, statusState.params);
+    el.className = "hint" + (statusState.kind ? " " + statusState.kind : "");
+  }
 
   /* ---------------- テーマ ---------------- */
   function applyTheme(theme) {
@@ -285,20 +575,72 @@
   Array.prototype.forEach.call(document.querySelectorAll("[data-theme-opt]"), function (btn) {
     btn.addEventListener("click", function () { applyTheme(btn.getAttribute("data-theme-opt")); });
   });
-  (function () {
-    var saved = "auto";
-    try { saved = localStorage.getItem("livesub-theme") || "auto"; } catch (err) {}
-    applyTheme(saved);
-  })();
+
+  /* ---------------- 言語（認識 / 訳文） ---------------- */
+  function fillSelect(select, languages) {
+    select.replaceChildren();
+    languages.forEach(function (item) {
+      select.add(new Option(item.label + " (" + item.code + ")", item.code));
+    });
+  }
+
+  function currentLanguages() {
+    return { source: $("source").value || "ja", target: $("target").value || "zh" };
+  }
+
+  function ensureDifferent() {
+    var pair = currentLanguages();
+    if (pair.source === pair.target) {
+      $("target").value = pair.source === "zh" ? "ja" : "zh";
+    }
+  }
+
+  function updateDirectionBadge() {
+    var pair = currentLanguages();
+    $("direction").textContent = (languageLabels[pair.source] || pair.source) + " → " +
+                                 (languageLabels[pair.target] || pair.target);
+  }
+
+  function loadLanguages() {
+    return fetch("/api/languages").then(function (response) { return response.json(); })
+      .then(function (data) {
+        var languages = data.languages || [];
+        languages.forEach(function (item) {
+          browserLocales[item.code] = item.browser;
+          languageLabels[item.code] = item.label;
+        });
+        fillSelect($("source"), languages);
+        fillSelect($("target"), languages);
+        var savedSource = null, savedTarget = null;
+        try {
+          savedSource = localStorage.getItem("livesub-source");
+          savedTarget = localStorage.getItem("livesub-target");
+        } catch (err) {}
+        if (savedSource && browserLocales[savedSource]) $("source").value = savedSource;
+        if (savedTarget && browserLocales[savedTarget]) $("target").value = savedTarget;
+        ensureDifferent();
+        updateDirectionBadge();
+      }).catch(function () {});
+  }
+
+  $("source").addEventListener("change", function () {
+    ensureDifferent();
+    updateDirectionBadge();
+    try { localStorage.setItem("livesub-source", $("source").value); } catch (err) {}
+  });
+  $("target").addEventListener("change", function () {
+    updateDirectionBadge();
+    try { localStorage.setItem("livesub-target", $("target").value); } catch (err) {}
+  });
 
   /* ---------------- 字幕スタイル ---------------- */
   var NUMBER_FIELDS = ["target_size", "source_size", "outline_width", "background_alpha",
                        "pairs", "margin_percent", "line_gap", "clear_after_ms"];
 
   function formatValue(key, value) {
-    if (key === "clear_after_ms") return (value / 1000).toFixed(1) + " 秒";
-    if (key === "background_alpha") return value + "%";
-    if (key === "pairs") return value + " 文";
+    if (key === "clear_after_ms") return (value / 1000).toFixed(1) + t("unit.seconds");
+    if (key === "background_alpha") return value + t("unit.percent");
+    if (key === "pairs") return value + t("unit.pairs");
     return String(value);
   }
 
@@ -312,8 +654,6 @@
       var out = $(key + "-o");
       if (out && $(key)) out.textContent = formatValue(key, Number($(key).value));
     });
-    $("clear_after_ms").value = data.clear_after_ms !== undefined ? data.clear_after_ms : 5000;
-    $("clear_after_ms-o").textContent = formatValue("clear_after_ms", Number($("clear_after_ms").value));
     $("show_source").value = data.show_source === false ? "false" : "true";
     $("gain-o").textContent = Number($("gain").value).toFixed(1) + "×";
   }
@@ -331,6 +671,13 @@
     };
     NUMBER_FIELDS.forEach(function (key) { data[key] = Number($(key).value); });
     return data;
+  }
+
+  function refreshOutputs() {
+    NUMBER_FIELDS.forEach(function (key) {
+      var out = $(key + "-o");
+      if (out && $(key)) out.textContent = formatValue(key, Number($(key).value));
+    });
   }
 
   function applyPreview() {
@@ -353,7 +700,7 @@
         delete data.ok;
         display = data;
       }).catch(function () {
-        say("スタイルを保存できませんでした。", "error");
+        say("status.saveFailed", "error");
       });
     }, 260);
   }
@@ -361,10 +708,7 @@
   function onStyleInput() {
     if (!display) return;
     display = readForm();
-    NUMBER_FIELDS.forEach(function (key) {
-      var out = $(key + "-o");
-      if (out) out.textContent = formatValue(key, Number($(key).value));
-    });
+    refreshOutputs();
     applyPreview();
     queueSave();
   }
@@ -381,30 +725,33 @@
       display = data;
       fillForm(display);
       applyPreview();
-      say("スタイルを既定に戻しました。", "ok");
+      say("status.resetOk", "ok");
     }).catch(function () {
-      say("既定に戻せませんでした。", "error");
+      say("status.resetFailed", "error");
     });
   };
 
-  /* ---------------- 翻訳エンジン（リージョン） ---------------- */
-  var engineInfo = null;
-
+  /* ---------------- 翻訳エンジン ---------------- */
   function regionLabel(code) {
-    return code === "intl" ? "海外（シンガポール）" : "中国本土（北京）";
+    return code === "intl" ? t("engine.intl") : t("engine.cn");
   }
 
-  function describeEngine(data) {
-    if (!data) return "—";
-    if (data.engine === "qwen") return "Qwen " + data.model + " / " + regionLabel(data.region);
-    return "mock（API キー未設定）";
+  function updateEngineStatus() {
+    var el = $("engine-status");
+    if (!el) return;
+    if (!engineInfo) { el.textContent = "—"; return; }
+    if (engineInfo.engine === "qwen") {
+      el.textContent = "Qwen " + engineInfo.model + " / " + regionLabel(engineInfo.region);
+    } else {
+      el.textContent = t("engine.mock");
+    }
   }
 
   function loadEngine() {
     fetch("/api/engine").then(function (response) { return response.json(); }).then(function (data) {
       engineInfo = data;
       $("region").value = data.region || "cn";
-      $("engine-status").textContent = describeEngine(data);
+      updateEngineStatus();
     }).catch(function () {});
   }
 
@@ -416,16 +763,17 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ region: region })
     }).then(function (response) {
-      if (response.status === 409) throw new Error("配信中は変更できません");
-      if (!response.ok) throw new Error("切り替えに失敗しました");
+      if (response.status === 409) throw new Error(t("status.regionBusy"));
+      if (!response.ok) throw new Error(t("status.regionFailed"));
       return response.json();
     }).then(function (data) {
       engineInfo = data;
-      $("engine-status").textContent = describeEngine(data);
-      say("リージョンを切り替えました：" + regionLabel(region), "ok");
+      updateEngineStatus();
+      say("status.regionChanged", "ok", { region: regionLabel(region) });
     }).catch(function (error) {
-      say(error.message, "error");
+      say("status.regionFailed", "error");
       if (engineInfo) $("region").value = engineInfo.region;
+      if (error && error.message) $("engine-status").textContent = error.message;
     }).finally(function () {
       $("region").disabled = false;
     });
@@ -433,30 +781,28 @@
 
   $("test-engine").addEventListener("click", function () {
     $("test-engine").disabled = true;
-    $("engine-status").textContent = "テスト中…";
-    fetch("/api/engine/test", { method: "POST" }).then(function (response) {
+    $("engine-status").textContent = t("engine.testing");
+    var pair = currentLanguages();
+    fetch("/api/engine/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: pair.source, target: pair.target })
+    }).then(function (response) {
       return response.json();
     }).then(function (data) {
       if (data.ok) {
-        $("engine-status").textContent = "OK：" + (data.sample || "");
-        say("接続テストに成功しました（" + data.engine + "）。", "ok");
+        $("engine-status").textContent = t("engine.ok") + (data.sample || "");
+        say("status.testOk", "ok", { engine: data.engine });
       } else {
-        $("engine-status").textContent = "失敗：" + data.error;
-        say("接続テストに失敗しました：" + data.error, "error");
+        $("engine-status").textContent = t("engine.failed") + data.error;
+        say("status.testFailed", "error", { error: data.error });
       }
     }).catch(function () {
-      $("engine-status").textContent = "失敗：通信エラー";
+      $("engine-status").textContent = t("status.testNet");
     }).finally(function () {
       $("test-engine").disabled = false;
     });
   });
-
-  /* ---------------- 状態表示 ---------------- */
-  function say(text, kind) {
-    var el = $("status");
-    el.textContent = text;
-    el.className = "hint" + (kind ? " " + kind : "");
-  }
 
   /* ---------------- マイクレベル ---------------- */
   var THRESHOLD_KEY = "livesub-threshold";
@@ -492,16 +838,22 @@
     navigator.mediaDevices.enumerateDevices().then(function (devices) {
       var select = $("device");
       var current = select.value;
-      select.replaceChildren(new Option("既定のマイク", ""));
+      select.replaceChildren(new Option("Default", ""));
       devices.filter(function (device) { return device.kind === "audioinput"; })
         .forEach(function (device, index) {
-          select.add(new Option(device.label || ("マイク " + (index + 1)), device.deviceId));
+          select.add(new Option(device.label || ("Microphone " + (index + 1)), device.deviceId));
         });
       var exists = Array.prototype.some.call(select.options, function (option) {
         return option.value === current;
       });
       if (exists) select.value = current;
     }).catch(function () {});
+  }
+
+  function setMeterState(key, speaking) {
+    var badge = $("mic-state");
+    badge.textContent = t(key);
+    badge.classList.toggle("speaking", Boolean(speaking));
   }
 
   function stopMeter() {
@@ -515,10 +867,9 @@
     meter.analyser = null;
     meter.gainNode = null;
     $("meter-fill").style.width = "0%";
-    $("mic-db").textContent = "マイク入力を待っています";
-    $("mic-state").textContent = "待機中";
-    $("mic-state").classList.remove("speaking");
-    $("mic-check").textContent = "マイクを確認";
+    $("mic-db").textContent = t("meter.waiting");
+    setMeterState("meter.idle", false);
+    $("mic-check").textContent = t("btn.micStart");
   }
 
   function drawMeter() {
@@ -536,16 +887,13 @@
     $("mic-db").textContent = (db <= -59.9 ? "-∞" : db.toFixed(1)) + " dBFS";
 
     var speaking = db >= currentThreshold();
-    var badge = $("mic-state");
-    badge.textContent = speaking ? "発話中" : "無音";
-    badge.classList.toggle("speaking", speaking);
-
+    setMeterState(speaking ? "meter.speaking" : "meter.silent", speaking);
     meter.raf = requestAnimationFrame(drawMeter);
   }
 
   function startMeter() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      say("このブラウザはマイク入力を取得できません。Chrome か Edge を使ってください。", "error");
+      say("status.noSR", "error");
       return;
     }
     var deviceId = $("device").value;
@@ -563,12 +911,12 @@
       meter.analyser.smoothingTimeConstant = 0.6;
       source.connect(meter.gainNode);
       meter.gainNode.connect(meter.analyser);
-      $("mic-check").textContent = "マイクを停止";
+      $("mic-check").textContent = t("btn.micStop");
       fillDevices();
       drawMeter();
     }).catch(function (error) {
-      $("mic-state").textContent = "マイク未接続";
-      say("マイクを使えませんでした：" + error.message + "（「マイクを確認」で再試行できます）", "error");
+      setMeterState("meter.nom", false);
+      say("status.micFailed", "error", { message: error.message });
     });
   }
 
@@ -585,10 +933,10 @@
 
   $("refresh-devices").onclick = function () {
     fillDevices();
-    say("デバイス一覧を更新しました。", "ok");
+    say("status.devicesRefreshed", "ok");
   };
 
-  /* ---------------- 音声認識（日本語固定） ---------------- */
+  /* ---------------- 音声認識 ---------------- */
   function send(payload) {
     if (socket && socket.readyState === 1) socket.send(JSON.stringify(payload));
   }
@@ -648,9 +996,9 @@
     }, PAUSE_MS);
   }
 
-  function beginRecognition() {
+  function beginRecognition(browserLanguage) {
     rec = new SR();
-    rec.lang = BROWSER_LANG;
+    rec.lang = browserLanguage || "ja-JP";
     rec.continuous = true;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
@@ -659,11 +1007,11 @@
       var code = event.error;
       if (code === "no-speech" || code === "aborted") return;
       if (code === "not-allowed" || code === "service-not-allowed") {
-        say("マイクが拒否されました。アドレスバー左の設定から許可してください。", "error");
+        say("status.micDenied", "error");
         stop(true);
         return;
       }
-      say("認識エラー：" + code, "error");
+      say("status.recogError", "error", { code: code });
     };
     rec.onend = function () {
       if (!running) return;
@@ -677,29 +1025,29 @@
     $("start").disabled = true;
     $("stop").disabled = false;
     $("region").disabled = true;
-    say("認識中です。話してください。", "ok");
+    $("source").disabled = true;
+    $("target").disabled = true;
+    say("status.listening", "ok");
   }
 
   function start() {
     if (running) return;
-    if (!SR) {
-      say("このブラウザは音声認識に対応していません。Chrome か Edge を使ってください。", "error");
-      return;
-    }
-    say("ローカルサービスに接続中…");
+    if (!SR) { say("status.noSR", "error"); return; }
+    var pair = currentLanguages();
+    if (pair.source === pair.target) { say("status.sameLang", "error"); return; }
+    say("status.connecting");
     var scheme = location.protocol === "https:" ? "wss" : "ws";
-    socket = new WebSocket(scheme + "://" + location.host + "/v1/text?source=" + SOURCE_LANG +
-                           "&targets=" + TARGET_LANG);
+    socket = new WebSocket(scheme + "://" + location.host + "/v1/text?source=" +
+                           encodeURIComponent(pair.source) + "&targets=" +
+                           encodeURIComponent(pair.target));
     socket.onopen = function () {
-      beginRecognition();
+      beginRecognition(browserLocales[pair.source]);
       heartbeat = setInterval(function () { send({ type: "ping" }); }, 30000);
     };
-    socket.onerror = function () {
-      say("ローカルサービスに接続できません。コンソール画面が開いているか確認してください。", "error");
-    };
+    socket.onerror = function () { say("status.unreachable", "error"); };
     socket.onclose = function () {
       if (!running) return;
-      say("接続が切れました。", "error");
+      say("status.disconnected", "error");
       stop(true);
     };
   }
@@ -724,62 +1072,89 @@
     $("start").disabled = false;
     $("stop").disabled = true;
     $("region").disabled = false;
-    if (!silent) say("停止しました。");
+    $("source").disabled = false;
+    $("target").disabled = false;
+    if (!silent) say("status.stopped");
   }
 
   $("start").onclick = start;
   $("stop").onclick = function () { stop(false); };
 
-  /* ---------------- OBS / その他 ---------------- */
+  /* ---------------- OBS / デバッグ ---------------- */
   $("obs-url").textContent = location.origin + "/view";
   $("copy").onclick = function () {
     navigator.clipboard.writeText($("obs-url").textContent).then(function () {
-      say("OBS の URL をコピーしました。", "ok");
+      say("status.urlCopied", "ok");
     }, function () {
-      say("コピーできませんでした。手動で選択してください。", "error");
+      say("status.copyFailed", "error");
     });
   };
   $("open").onclick = function () { window.open("/view", "_blank"); };
   $("copy-prompt").onclick = function () {
     navigator.clipboard.writeText($("css-prompt").textContent).then(function () {
-      $("copy-prompt").textContent = "コピーしました";
-      setTimeout(function () { $("copy-prompt").textContent = "コピー"; }, 1500);
+      $("copy-prompt").textContent = t("btn.copyPrompt");
+      say("status.urlCopied", "ok");
     }, function () {
-      say("コピーできませんでした。手動で選択してください。", "error");
+      say("status.copyFailed", "error");
     });
   };
   $("debug-send").onclick = function () {
     var text = $("debug-text").value.trim();
     if (!text) return;
-    if (!socket || socket.readyState !== 1) {
-      say("先に「字幕を開始」を押してください。", "error");
-      return;
-    }
+    if (!socket || socket.readyState !== 1) { say("status.startFirst", "error"); return; }
     seq += 1;
     send({ id: seq, text: text, final: true, trigger: "debug" });
     $("debug-text").value = "";
-    say("送信しました：" + text, "ok");
+    say("status.debugSent", "ok", { text: text });
   };
 
   /* ---------------- 起動 ---------------- */
-  fetch("/api/display").then(function (response) { return response.json(); }).then(function (data) {
+  (function initUiLanguage() {
+    var saved = "ja";
+    try { saved = localStorage.getItem("livesub-ui-lang") || "ja"; } catch (err) {}
+    if (!I18N[saved]) saved = "ja";
+    $("ui-lang").value = saved;
+    applyLanguage(saved, false);
+  })();
+
+  $("ui-lang").addEventListener("change", function () {
+    applyLanguage($("ui-lang").value, true);
+  });
+
+  (function initTheme() {
+    var saved = "auto";
+    try { saved = localStorage.getItem("livesub-theme") || "auto"; } catch (err) {}
+    applyTheme(saved);
+  })();
+
+  Promise.all([
+    loadLanguages(),
+    fetch("/api/display").then(function (response) { return response.json(); })
+  ]).then(function (results) {
+    var data = results[1];
     delete data.ok;
     display = data;
+    var savedSource = null;
+    try { savedSource = localStorage.getItem("livesub-source"); } catch (err) {}
+    if (!savedSource) {
+      if (data.source_language && browserLocales[data.source_language]) {
+        $("source").value = data.source_language;
+      }
+      if (data.target_languages && browserLocales[data.target_languages[0]]) {
+        $("target").value = data.target_languages[0];
+      }
+    }
+    ensureDifferent();
+    updateDirectionBadge();
     fillForm(display);
     applyPreview();
   }).catch(function () {
-    say("設定を読み込めませんでした。", "error");
+    say("status.loadFailed", "error");
   });
 
   fetch("/api/health").then(function (response) { return response.json(); }).then(function (data) {
     var banner = $("banner");
-    if (data.engine !== "qwen") {
-      banner.hidden = false;
-      banner.textContent = "Qwen の API Key が未設定です。いまは mock のダミー訳文が出ます。" +
-        "api.toml の qwen.api_key を入れて、サービスを再起動してください。";
-    } else {
-      banner.hidden = true;
-    }
+    banner.hidden = data.engine === "qwen";
   }).catch(function () {});
 
   try {
@@ -794,7 +1169,6 @@
     navigator.mediaDevices.addEventListener("devicechange", fillDevices);
   }
 
-  // 起動したらマイクを自動で開く（ブラウザが許可を求めます）
   startMeter();
   document.addEventListener("click", function () {
     if (meter.ctx && meter.ctx.state === "suspended") meter.ctx.resume().catch(function () {});

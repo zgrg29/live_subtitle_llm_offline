@@ -88,6 +88,7 @@
 | POST | `/api/engine` | `{"region": "cn"\|"intl"}` 切换区域；配信中返回 409 |
 | POST | `/api/engine/test` | 用当前引擎翻 1 句，验证 Key/网络 |
 | GET | `/api/display` | 当前字幕样式（控制台初始化用） |
+| GET | `/api/languages` | 25 种可选语言（Qwen MT ∩ Chrome Web Speech） |
 | POST | `/api/display` | 合并并校验样式，推给所有 viewer，写 `settings.json` |
 | POST | `/api/display/reset` | 恢复 `config.toml [display]` 的默认值 |
 | WS | `/v1/text?source=ja&targets=zh` | studio 上行：`{type:"ping"}` 或 `{id,text,final}` |

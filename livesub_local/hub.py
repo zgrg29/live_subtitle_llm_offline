@@ -288,9 +288,15 @@ class Hub:
     def unsubscribe(self, queue: asyncio.Queue) -> None:
         self._viewers.discard(queue)
 
-    async def probe(self) -> str:
+    async def probe(self, source: str | None = None, target: str | None = None) -> str:
         """接続テスト用に 1 文だけ翻訳する（セッションは作らない）。"""
-        return await self._translator.translate("こんにちは", self._source_language, self._targets[0])
+        source = source or self._source_language
+        target = target or self._targets[0]
+        if (source not in self._allowed_sources() or target not in self._allowed_targets()
+                or source == target):
+            raise ValueError("不支持的识别/译文语言")
+        text = "こんにちは" if source == "ja" else "Hello"
+        return await self._translator.translate(text, source, target)
 
     async def set_translator(self, translator: Any) -> None:
         """切换翻译引擎（区域/引擎变更）。调用前必须确保没有正在进行的会话。"""

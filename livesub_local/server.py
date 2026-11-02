@@ -29,7 +29,8 @@ from .config import (
     BROWSER_LANGUAGES,
     BUNDLE_ROOT,
     DEFAULT_API_PATH,
-    LANGUAGE_NAMES,
+    LANGUAGE_CODES,
+    LANGUAGE_LABELS,
     QWEN_ENDPOINTS,
     QWEN_REGIONS,
     Config,
@@ -205,9 +206,13 @@ def create_app(
         return await engine_info()
 
     @app.post("/api/engine/test")
-    async def test_engine():
+    async def test_engine(payload: dict = Body(default={})):
+        source = payload.get("source") if isinstance(payload, dict) else None
+        target = payload.get("target") if isinstance(payload, dict) else None
         try:
-            sample = await hub.probe()
+            sample = await hub.probe(source, target)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:  # MTError を含む
             return {"ok": False, "error": getattr(exc, "code", "unavailable")}
         return {"ok": True, "engine": app.state.engine, "sample": sample}
@@ -244,9 +249,9 @@ def create_app(
     @app.get("/api/languages")
     async def languages():
         return {
-            "source": [
-                {"code": code, "label": code, "browser": BROWSER_LANGUAGES[code]}
-                for code in LANGUAGE_NAMES
+            "languages": [
+                {"code": code, "label": LANGUAGE_LABELS[code], "browser": BROWSER_LANGUAGES[code]}
+                for code in LANGUAGE_CODES
             ],
         }
 

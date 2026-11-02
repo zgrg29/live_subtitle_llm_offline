@@ -111,6 +111,34 @@ class ServerTest(unittest.TestCase):
                 self.assertIn("display", first)
                 self.assertEqual(first["display"]["target_size"], 44)
 
+    def test_languages_catalog(self):
+        client = self.make_client()
+        with client:
+            data = client.get("/api/languages").json()
+            codes = [item["code"] for item in data["languages"]]
+            self.assertIn("ja", codes)
+            self.assertIn("zh", codes)
+            self.assertIn("en", codes)
+            self.assertGreaterEqual(len(codes), 20)
+            japanese = next(item for item in data["languages"] if item["code"] == "ja")
+            self.assertEqual(japanese["browser"], "ja-JP")
+            self.assertEqual(japanese["label"], "日本語")
+
+    def test_text_websocket_accepts_other_languages(self):
+        translator = FakeTranslator()
+        client = self.make_client(translator)
+        with client:
+            with client.websocket_connect("/v1/text?source=en&targets=zh") as socket:
+                ready = socket.receive_json()
+                self.assertEqual(ready["source_language"], "en")
+                self.assertEqual(ready["targets"], ["zh"])
+                socket.send_json({"id": 1, "text": "hello", "final": True})
+                hub = client.app.state.hub
+                wait_for(lambda: hub.session is not None
+                         and hub.session.snapshot()["sentences"]
+                         and hub.session.snapshot()["sentences"][0]["translations"].get("zh"))
+                self.assertEqual(translator.calls[-1], ("hello", "en", "zh"))
+
     def test_display_update_is_clamped_and_persisted(self):
         client = self.make_client()
         with client:
@@ -127,9 +155,8 @@ class ServerTest(unittest.TestCase):
             saved = json.loads(self.settings.read_text(encoding="utf-8"))
             self.assertEqual(saved["display"]["target_size"], 88)
 
-            with client.websocket_connect("/v1/view") as socket:
-                first = socket.receive_json()
-                self.assertEqual(first["display"]["target_size"], 88)
+            # 推送用的样式与 app 状态一致
+            self.assertEqual(client.app.state.hub.display["target_size"], 88)
 
             reset = client.post("/api/display/reset").json()
             self.assertEqual(reset["target_size"], 44)
@@ -166,6 +193,13 @@ class ServerTest(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["engine"], "mock")
             self.assertIn("こんにちは", result["sample"])
+
+            english = client.post("/api/engine/test", json={"source": "en", "target": "zh"}).json()
+            self.assertTrue(english["ok"])
+            self.assertIn("Hello", english["sample"])
+
+            bad = client.post("/api/engine/test", json={"source": "zh", "target": "zh"})
+            self.assertEqual(bad.status_code, 400)
 
     def test_region_switch_blocked_while_streaming(self):
         client = self.make_client()

@@ -158,6 +158,20 @@ pre { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
   display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-pill);
   background: var(--seg-bg); border: 1px solid var(--seg-border);
 }
+.lang-select {
+  appearance: none; -webkit-appearance: none;
+  height: 34px; min-height: 34px; padding: 0 30px 0 14px; margin: 0;
+  border-radius: var(--radius-pill); border: 1px solid var(--seg-border);
+  background: var(--seg-bg); color: var(--seg-ink);
+  font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.lang-select:hover { background: var(--btn-secondary-hover); color: var(--text); }
+.lang-wrap { position: relative; display: inline-flex; align-items: center; }
+.lang-wrap::after {
+  content: ""; position: absolute; right: 12px; top: 50%; width: 6px; height: 6px;
+  border-right: 1.5px solid var(--seg-ink); border-bottom: 1.5px solid var(--seg-ink);
+  transform: translateY(-70%) rotate(45deg); pointer-events: none;
+}
 .theme-opt {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-pill);
