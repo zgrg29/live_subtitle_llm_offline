@@ -31,13 +31,15 @@ Chrome 里说话 → 浏览器内置 Web Speech 识别成文字 → 本机小服
    文件路径）、没验证什么、已知问题、下一步候选。没有证据的条目标「未验」，不要写成完成。
 3. **重写下一场提示词**：[docs/NEXT-SESSION.md](docs/NEXT-SESSION.md) 必须能让下一场
    **直接整段粘贴**就开始干活（背景、现状、本次目标、验收标准、不要做什么）。
-4. **提交**：用 GitHub Desktop 自带的 git（本机没有全局 git）：
+4. **提交**：
 
    ```powershell
-   $git = "%LOCALAPPDATA%\GitHubDesktop\app-3.6.7\resources\app\git\cmd\git.exe"
-   & $git add -A
-   & $git commit -m "M1: 完成 ……"
+   git add -A
+   git commit -m "M1: 完成 ……"
    ```
+
+   本机没有全局 git 时，用 GitHub Desktop 自带的 git：
+   `%LOCALAPPDATA%\GitHubDesktop\app-*\resources\app\git\cmd\git.exe`。
 
    **只本地提交，不 push。** 提交信息用中文，格式 `里程碑: 一句话`。
 

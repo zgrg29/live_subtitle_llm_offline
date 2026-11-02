@@ -38,8 +38,7 @@
 - 把实测数字写进 PROGRESS，没测到的写「未验」。
 
 限制：
-- 不要 push；提交用 GitHub Desktop 自带的 git：
-  %LOCALAPPDATA%\GitHubDesktop\app-3.6.7\resources\app\git\cmd\git.exe
+- 不要 push；提交用 GitHub Desktop 自带的 git（`%LOCALAPPDATA%\GitHubDesktop\app-*\resources\app\git\cmd\git.exe`）。
 - 不要动 js 分支，也不要把 Node 代码加回 main。
 - 界面/配置/终端输出一律日语；README 日语；docs/ 用中文。
 - 本会话沙箱：写 .git、系统 Temp 都被限制；git/pip/打包/跑 exe 需要「完整权限」。

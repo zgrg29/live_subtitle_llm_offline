@@ -50,8 +50,8 @@
 ## D-005 提交用 GitHub Desktop 自带的 git，且只本地提交、不 push
 
 **日期**：2026-11-02
-**决定**：`%LOCALAPPDATA%\GitHubDesktop\app-3.6.7\resources\app\git\cmd\git.exe`
-（本机没装独立 git）。每场结束提交一次，不 push。
+**决定**：用 GitHub Desktop 自带的 git
+（`%LOCALAPPDATA%\GitHubDesktop\app-*\resources\app\git\cmd\git.exe`）。每场结束提交一次，不 push。
 **理由**：用户指定的提交方式；本地提交足够留痕，远端推送由用户自己决定。
 **代价**：GitHub Desktop 升级后版本号路径会变，需要在 AGENTS.md 里更新。
 **何时推翻**：用户装了独立 git，或要求推到 GitHub。
