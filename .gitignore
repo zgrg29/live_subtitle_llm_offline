@@ -1,0 +1,31 @@
+# 本地配置（含千问 API Key，绝不入库）
+api.toml
+config.toml
+config.local.toml
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# 运行产物
+logs/
+*.log
+.tmp/
+build-tmp/
+recordings/
+tests/_work/
+
+# 打包产物
+build/
+dist/
+*.spec
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

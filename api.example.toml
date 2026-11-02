@@ -1,0 +1,19 @@
+# 千问 API 配置模板 —— 这个文件可以提交到 GitHub
+#
+# 用法：
+#   1. 复制本文件为 api.toml
+#        copy api.example.toml api.toml
+#   2. 用记事本打开 api.toml，把 qwen.api_key 填成你自己的 Key
+#   3. 重新运行 start.bat
+#
+# api.toml 已经写进 .gitignore，不会提交；api.example.toml 里没有任何真实 Key。
+# 不要截图 api.toml，不要把它发到聊天/群里，不要上传网盘。
+
+[qwen]
+# 阿里云百炼（DashScope）控制台 → API-KEY，形如 sk-xxxxxxxxxxxxxxxx
+api_key = ""
+# OpenAI 兼容接口地址；账号有专属部署时改成自己的地址
+endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+model = "qwen-mt-flash"
+# 单句翻译超时（秒）
+timeout_s = 10

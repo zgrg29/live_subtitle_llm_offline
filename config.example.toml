@@ -1,0 +1,46 @@
+# LiveSub Local 配置文件
+#
+# 用法：把本文件复制为 config.toml，然后双击 start.bat。
+#   copy config.example.toml config.toml
+#
+# 注意：API Key 不在这个文件里，在 api.toml（模板见 api.example.toml）。
+# config.toml 已写进 .gitignore，不会被提交。
+
+[server]
+# 只监听本机。不要改成 0.0.0.0（那会把服务暴露到局域网）。
+host = "127.0.0.1"
+# 浏览器和 OBS 都访问这个端口
+port = 8765
+# 启动后自动打开浏览器
+open_browser = true
+
+[subtitle]
+# 【本版固定】控制台只做「日语 → 中文」，下面两项只是服务端默认值，正常不用改。
+# 识别语言 ja=日语 zh=中文 en=英语 ko=韩语
+source_language = "ja"
+# 译文语言，可以写多个：target_languages = ["zh", "en"]
+target_languages = ["zh"]
+# 最多保留多少句（超出后丢最旧的），防止长时间直播内存增长
+max_sentences = 100
+# 两次翻译请求之间的最小间隔（毫秒），防止触发限流
+min_interval_ms = 120
+# auto = 有 key 用千问，没 key 用 mock；qwen = 强制千问；mock = 强制假翻译（联调用）
+engine = "auto"
+
+[display]
+# 显示几对字幕（原文+译文算一对），1–6
+pairs = 3
+# 是否显示原文
+show_source = true
+# 字幕位置：bottom / center / top
+position = "bottom"
+# 原文字号（px，1920x1080 画布基准）
+source_size = 26
+# 译文字号（px）
+target_size = 44
+# 文字描边宽度（px），0 为不描边
+outline_width = 4
+# 淡入淡出时长（毫秒）
+fade_ms = 160
+# 多久没有新字幕就淡出（毫秒），0 表示一直显示
+clear_after_ms = 6000

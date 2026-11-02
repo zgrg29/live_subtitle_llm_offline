@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>LiveSub Local · 字幕</title>
+<style>
+  :root {
+    --target-size: 44px;
+    --source-size: 26px;
+    --outline: 4px;
+    --fade: 160ms;
+    --gap: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: transparent; overflow: hidden;
+    font-family: "Microsoft YaHei", "Noto Sans SC", "Yu Gothic UI", "Hiragino Sans", sans-serif;
+  }
+  #stage {
+    position: fixed; left: 0; right: 0;
+    display: flex; flex-direction: column; align-items: center;
+    gap: var(--gap); padding: 0 8%;
+    opacity: 1; transition: opacity var(--fade) linear;
+    pointer-events: none;
+  }
+  #stage.bottom { bottom: 8%; }
+  #stage.top { top: 6%; }
+  #stage.center { top: 50%; transform: translateY(-50%); }
+  #stage.idle { opacity: 0; }
+  .pair { text-align: center; line-height: 1.28; max-width: 100%; }
+  .pair:last-child { animation: rise var(--fade) ease-out; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  .source, .target {
+    white-space: pre-wrap; word-break: break-word;
+    -webkit-text-stroke: var(--outline) #000;
+    paint-order: stroke fill;
+  }
+  .source {
+    font-size: var(--source-size);
+    color: #b9c6d4;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .target {
+    font-size: var(--target-size);
+    color: #ffffff;
+    font-weight: 700;
+    letter-spacing: .01em;
+  }
+  .source:only-child { margin-bottom: 0; }
+  .empty-hint { color: rgba(255,255,255,.35); font-size: 20px; }
+</style>
+</head>
+<body>
+<div id="stage" class="bottom"></div>
+<script>
+(function () {
+  "use strict";
+  var stage = document.getElementById("stage");
+  var settings = null;
+  var lastKey = "";
+  var reconnectTimer = null;
+  var idleTimer = null;
+
+  function setVars(data) {
+    var root = document.documentElement.style;
+    root.setProperty("--target-size", data.target_size + "px");
+    root.setProperty("--source-size", data.source_size + "px");
+    root.setProperty("--outline", data.outline_width + "px");
+    root.setProperty("--fade", data.fade_ms + "ms");
+    stage.className = data.position || "bottom";
+  }
+
+  function armIdle() {
+    if (!settings) return;
+    if (idleTimer) clearTimeout(idleTimer);
+    if (!settings.clear_after_ms) { stage.classList.remove("idle"); return; }
+    stage.classList.remove("idle");
+    idleTimer = setTimeout(function () { stage.classList.add("idle"); }, settings.clear_after_ms);
+  }
+
+  function render(snapshot) {
+    if (!settings) return;
+    var sentences = (snapshot.sentences || []).slice(-settings.pairs);
+    var key = sentences.map(function (s) {
+      return s.id + "|" + s.source + "|" + JSON.stringify(s.translations || {});
+    }).join("~");
+    if (key === lastKey) return;
+    lastKey = key;
+
+    var html = "";
+    sentences.forEach(function (sentence) {
+      var targets = (snapshot.targets || []).map(function (t) { return sentence.translations[t]; })
+        .filter(function (t) { return t; });
+      var target = targets.length ? targets[0] : "";
+      if (!sentence.source && !target) return;
+      html += '<div class="pair">';
+      if (settings.show_source && sentence.source) {
+        html += '<div class="source">' + escapeHtml(sentence.source) + "</div>";
+      }
+      if (target) html += '<div class="target">' + escapeHtml(target) + "</div>";
+      html += "</div>";
+    });
+
+    stage.innerHTML = html;
+    if (html) armIdle(); else stage.classList.add("idle");
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  function connect() {
+    var scheme = location.protocol === "https:" ? "wss" : "ws";
+    var socket = new WebSocket(scheme + "://" + location.host + "/v1/view");
+    socket.onmessage = function (event) {
+      var payload;
+      try { payload = JSON.parse(event.data); } catch (err) { return; }
+      if (payload.type === "snapshot") { render(payload); return; }
+      if (payload.type === "idle") { lastKey = ""; stage.innerHTML = ""; stage.classList.add("idle"); }
+    };
+    socket.onclose = function () {
+      if (reconnectTimer) return;
+      reconnectTimer = setTimeout(function () { reconnectTimer = null; connect(); }, 1000);
+    };
+  }
+
+  fetch("/api/display").then(function (r) { return r.json(); }).then(function (data) {
+    settings = data;
+    setVars(data);
+    connect();
+  }).catch(function () {
+    // 服务没起来：1 秒后重试整个初始化
+    setTimeout(function () { location.reload(); }, 1500);
+  });
+})();
+</script>
+</body>
+</html>
