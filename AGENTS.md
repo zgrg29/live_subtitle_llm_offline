@@ -73,12 +73,16 @@ api.example.toml          千问 API Key 模板（复制为 api.toml，api.toml 
 run.py / start.bat        启动入口（源码方式）
 install.bat               首次安装依赖（创建 .venv）
 build_exe.bat             打包单文件 exe（产物在 dist/，不入库）
-livesub_local/            源码
+livesub_local/            源码（Python 版，当前默认交付）
   config.py               读取/校验 config.toml + api.toml
   mt.py                   千问 MT 适配器 + mock
   hub.py                  会话、字幕状态、翻译队列、viewer 广播
   server.py               FastAPI 路由与 WebSocket
   static/                 页面（无构建步骤：studio / view / ui.css / subtitle.css / style.js）
+node/                     Node.js 版（并行实现，验收通过后再切换默认）
+  src/                    config / toml / mt / hub / ws / server / run
+  test/                   node:test 测试
+  scripts/                SEA 打包（build-windows.mjs + sea-bootstrap.cjs）
 tests/                    离线测试
 docs/
   PROJECT-PLAN.md         全项目里程碑规划

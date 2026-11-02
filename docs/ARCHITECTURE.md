@@ -145,12 +145,13 @@ PyInstaller 运行时会把内置文件解压到 `--runtime-tmpdir` 指定的位
 
 ## 10. 界面语言与翻译方向
 
-- `/studio` 与 `/view` 的界面文案、`README.md`、`config.example.toml`、`api.example.toml`、
-  三个 `.bat`、启动时的终端输出，全部是**日语**（面向日本主播），不做语言切换。
-  `docs/` 下的工程记录仍是中文（给维护者看）。
+- 控制台界面支持 **日本語 / 中文 / English**（`studio.html` 内的 `I18N` 字典 + `data-i18n`），
+  默认日语，选择存 `localStorage`。`/view` 没有界面文字。
+- `README.md`、`config.example.toml`、`api.example.toml`、三个 `.bat`、启动终端输出都是日语；
+  `docs/` 下的工程记录是中文（给维护者看）。
 - 控制台视觉沿用参考项目的 Apple 风格（`static/ui.css`，明/暗/跟随系统）。
-- 翻译方向固定 **ja → zh**：`studio.html` 里的 `SOURCE_LANG` / `TARGET_LANG` 两个常量。
-  `config.toml` 的 `[subtitle].source_language/target_languages` 只是服务端默认值。
+- 识别 / 译文语言在控制台选，列表是 **Qwen MT 支持 ∩ Chrome Web Speech 能识别** 的 25 种；
+  默认 **ja → zh**。通过 `?source=ja&targets=zh` 按会话生效（配信中禁用下拉）。
 - 千问区域在控制台的「翻訳エンジン」卡片里选：`cn`（北京）/ `intl`（新加坡），
   见 `QWEN_ENDPOINTS`；配信中切换会被拒绝（409）。
 - 控制台底部的「OBS 字幕の見た目を変える」提示词描述的是本页真实 DOM
@@ -158,3 +159,26 @@ PyInstaller 运行时会把内置文件解压到 `--runtime-tmpdir` 指定的位
   （`--target-size` / `--source-size` / `--target-color` / `--outline` / `--pair-bg` /
   `--gap` / `--sub-font` 等）；
   **改这几个类名或变量名时，必须同步改 `studio.html` 里的提示词**。
+
+## 11. Node.js 版（并行实现，见 DECISIONS D-019）
+
+服务端有一份等价的 Node 实现，放在 `node/`，**零 npm 依赖**：
+
+| 文件 | 作用 |
+|---|---|
+| `node/src/toml.mjs` | 极简 TOML 读取（只支持本项目用到的语法） |
+| `node/src/config.mjs` | 配置读取/校验、25 种语言表、区域端点、样式归一化 |
+| `node/src/mt.mjs` | 千问 MT（`fetch`）+ mock，错误码与 Python 版一致 |
+| `node/src/hub.mjs` | 会话 / 滚动窗口 / 串行翻译队列 / viewer 广播 |
+| `node/src/ws.mjs` | 自写 WebSocket 服务端（握手、文本帧、分片、ping/pong、close） |
+| `node/src/server.mjs` | `node:http` 路由 + 两个 WS + settings.json + 区域切换 |
+| `node/src/run.mjs` | 日文横幅、端口检查、`rundll32` 打开浏览器 |
+| `node/test/` | `node:test` 用例（28 个） |
+| `node/scripts/` | SEA 打包：`build-windows.mjs` + `sea-bootstrap.cjs` |
+
+- 前端 `livesub_local/static/` 由两个版本**共用**，UI 只有一份。
+- 协议、错误码、`settings.json` 形状、`/api/*` 返回都与 Python 版一致。
+- 打包：`node node/scripts/build-windows.mjs` → `node/dist/LiveSubLocal.exe`（约 94 MB，含 Node 运行时）。
+  SEA bootstrap 把 `src/` 与 `static/` 解包到 exe 旁边的 `_app/<hash>`，配置仍读 exe 目录。
+- 当前默认交付仍是 Python 版；Node 版通过真机验收后再切换（切完可删 `livesub_local/*.py`，
+  把 `static/` 挪到仓库根）。

@@ -121,3 +121,58 @@ POST /api/engine/test -> {"ok":true,"engine":"mock","sample":"［mock·zh］こ�
 - A. 真机 M1 验收：双击 exe、填真 Key、Chrome 说话、OBS 看效果，记录实际延迟与切句问题。
 - B. M2 收尾：主题预设、字幕淡出行为、界面文案校对。
 - C. M3 延迟与稳定性：埋点、长跑、断线重连。
+
+## Node.js 版（2026-11-02 追加，并行实现）
+
+按用户要求把服务端重写成 Node.js（前端不动）。详见 DECISIONS D-019、ARCHITECTURE §11。
+
+### 完成
+
+- `node/src/`：`toml.mjs`（自写极简 TOML）、`config.mjs`、`mt.mjs`（fetch）、`hub.mjs`、
+  `ws.mjs`（自写 WebSocket 服务端）、`server.mjs`（node:http + 两个 WS + settings.json + 区域切换）、
+  `run.mjs`（日文横幅、端口检查、rundll32 开浏览器）。
+- `node/test/`：28 个 `node:test` 用例（配置 10 / hub 9 / server 9）。
+- `node/scripts/`：SEA 打包（下载 postject → sea.blob → 注入 node.exe），产物 `node/dist/LiveSubLocal.exe`。
+
+### 证据
+
+```
+$ node --test --test-isolation=none test/config.test.mjs test/hub.test.mjs test/server.test.mjs
+ℹ tests 28
+ℹ pass 28
+ℹ fail 0
+```
+
+Node 版服务端冒烟（8819）：
+
+```
+studio len=50880  id="ui-lang": True  LiveSub Local: True
+/api/health -> {"ok":true,"engine":"mock","region":"cn",...}
+/api/languages -> 25
+POST /api/display {target_size:90, position:top} -> 200
+/v1/view 第一帧 display.target_size = 90
+/v1/text 送 "こんばんは" -> ［mock·zh］こんばんは（快照里带 display）
+SMOKE OK
+```
+
+SEA 单文件 exe（93,970,944 字节）实测：
+
+```
+运行时解包到 exe 旁 _app/
+首次运行自动生成 api.toml（1309 字节，来自内嵌模板）
+/api/health -> 200 ok
+/studio -> 50880 字节，含 id="ui-lang"
+WebSocket 送句 -> ［mock·zh］こんばんは；样式更新能推到 /v1/view
+```
+
+### 未验证
+
+- Node 版和 Python 版都没有做**真机 Chrome + 真千问 Key + OBS** 的验收。
+- Node 版 exe 的冷启动时间、杀毒软件误报（SEA 常见）未测。
+- `node --test test/` 在本会话的沙箱里会因 `spawn EPERM` 失败（环境限制），
+  验证时用了 `--test-isolation=none` + 显式文件列表；普通机器不受影响。
+
+### 已知问题
+
+- 两套服务端要同步维护（前端共用一份），切换前改协议要改两处。
+- Node 版 exe 约 94 MB（含 Node 运行时），比 Python 版 16 MB 大很多。

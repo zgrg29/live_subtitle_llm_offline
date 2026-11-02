@@ -24,6 +24,12 @@ build/
 dist/
 *.spec
 
+# Node 版
+node/build/
+node/dist/
+node/test/_work/
+node/**/_app/
+
 # 编辑器 / 系统
 .vscode/
 .idea/
