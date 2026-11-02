@@ -43,7 +43,9 @@
 **终端与配置的语言**
 - `run.py` 启动时的所有输出改为日语，并 `chcp 65001` + `sys.stdout.reconfigure(utf-8)`。
 - `start.bat` / `install.bat` / `build_exe.bat` / `config.example.toml` / `api.example.toml` 全部日语。
-- 浏览器自动打开改为「轮询 `/api/health` 就绪 → `os.startfile` → `webbrowser` → `cmd start`」多级兜底。
+- **浏览器自动打开改为「探测端口 → `rundll32 url.dll,FileProtocolHandler` → `os.startfile`
+  → `cmd /c start`」多级兜底**，并打印实际用了哪一种（参考同机 `D:\哔哩哔哩OBS礼物特效`
+  的 `openPanel()` 做法，见 DECISIONS D-015）。控制台还会打印 `open_browser` 的取值和配置文件路径。
 
 ### 证据
 
@@ -92,7 +94,9 @@ POST /api/engine/test -> {"ok":true,"engine":"mock","sample":"［mock·zh］こ�
 - **真千问 Key 的翻译**：只有 mock 与 httpx.MockTransport 离线测试，未真实请求 DashScope；
   `cn` / `intl` 两个区域都没用真 Key 试过。
 - **OBS 渲染**：`/view` 没在 OBS 浏览器源里看过；字体、描边、背景、自定义 CSS 都未验。
-- **exe 双击自动开浏览器**：代码已改为等待就绪后 `os.startfile`，但窗口是否真的弹出没有由人确认。
+- **exe 双击自动开浏览器**：改成 rundll32 后，源码方式实测打印
+  `[情報] ブラウザを開きました（rundll32）: http://127.0.0.1:8813/studio`；
+  exe 里同一条代码路径也执行了（服务能起来），但**窗口是否真的弹出仍需要用户肉眼确认一次**。
 - **exe 控制台的日文显示**：源码模式已确认；exe 里没有截到输出（重定向时被缓冲），
   字体是否支持日文取决于用户机器的控制台字体。
 - 控制台的日语文案没有母语者校对。

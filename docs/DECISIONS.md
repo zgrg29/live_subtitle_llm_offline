@@ -160,3 +160,18 @@
 **理由**：产品只面向日本主播；英文没有必要。工程记录用中文能更快写清楚。
 **代价**：README 不再服务英文读者；如果以后要开放英文用户，需要补一份。
 **何时推翻**：有英文用户，或要把项目开源给国际用户时。
+
+---
+
+## D-015 Windows 打开浏览器用 `rundll32 url.dll,FileProtocolHandler`
+
+**日期**：2026-11-02
+**决定**：启动后先探测端口就绪，再依次尝试
+`rundll32.exe url.dll,FileProtocolHandler <url>` → `os.startfile` → `cmd /c start`，
+并把实际用到的方式打印到控制台。
+**理由**：用户反馈 exe 双击后浏览器没弹出来；参考同机的 `D:\哔哩哔哩OBS礼物特效`
+（`src/server/index.mjs` 的 `openPanel()`）用的是 `execFile('rundll32.exe',
+['url.dll,FileProtocolHandler', url])`，走的是和资源管理器双击链接相同的 ShellExecute 路径，
+比 Python 的 `webbrowser`（会先读 `BROWSER` 环境变量）可靠。
+**代价**：`rundll32` 只要进程能起就算成功，无法确认浏览器真的弹了；失败时只能靠控制台提示。
+**何时推翻**：改用托盘程序或 Electron 外壳时，直接用宿主 API 打开页面。

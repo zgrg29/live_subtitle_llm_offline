@@ -16,7 +16,6 @@ import subprocess
 import sys
 import threading
 import time
-import urllib.request
 import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -383,35 +382,65 @@ def _setup_console() -> None:
             pass
 
 
-def _open_browser(url: str, timeout: float = 25.0) -> None:
-    """サーバーが応答できるようになってからブラウザを開く（exe でも確実に開く）。"""
-    target = url + "/studio"
-    health = url + "/api/health"
+def _wait_for_port(host: str, port: int, timeout: float = 25.0) -> bool:
+    """原始 socket 探测端口（不走代理、不用 HTTP），确认服务真的在监听。"""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
-            with urllib.request.urlopen(health, timeout=1) as response:
-                if response.status == 200:
-                    break
-        except Exception:
-            time.sleep(0.3)
-
-    print(f"[情報] ブラウザで {target} を開きます。")
-    if os.name == "nt":
-        try:
-            os.startfile(target)  # type: ignore[attr-defined]
-            return
+            with socket.create_connection((host, port), timeout=1.0):
+                return True
         except OSError:
-            pass
+            time.sleep(0.25)
+    return False
+
+
+def _launch_browser(url: str) -> str | None:
+    """Windows 用 ShellExecute 系列打开默认浏览器；返回实际用到的方式。"""
+    if os.name != "nt":
+        try:
+            return "webbrowser" if webbrowser.open_new_tab(url) else None
+        except Exception:
+            return None
+
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    # 1) rundll32 url.dll,FileProtocolHandler：参考 BiliGiftDrop 的做法，最接近资源管理器双击。
     try:
-        if webbrowser.open_new_tab(target):
-            return
-    except Exception:
-        pass
-    try:
-        subprocess.Popen(["cmd", "/c", "start", "", target], close_fds=True)
+        subprocess.Popen(
+            ["rundll32.exe", "url.dll,FileProtocolHandler", url],
+            close_fds=True,
+            creationflags=flags,
+        )
+        return "rundll32"
     except OSError:
-        print(f"[情報] ブラウザを自動で開けませんでした。{target} を手動で開いてください。")
+        pass
+    # 2) os.startfile
+    try:
+        os.startfile(url)  # type: ignore[attr-defined]
+        return "os.startfile"
+    except OSError:
+        pass
+    # 3) cmd /c start
+    try:
+        subprocess.Popen(
+            ["cmd", "/c", "start", "", url], close_fds=True, creationflags=flags
+        )
+        return "cmd start"
+    except OSError:
+        pass
+    return None
+
+
+def _open_browser(host: str, port: int) -> None:
+    """サーバーが待ち受けを始めてからブラウザを開く。"""
+    url = f"http://{host}:{port}/studio"
+    if not _wait_for_port(host, port):
+        print(f"[情報] サーバーの起動を確認できませんでした。手動で開いてください: {url}")
+        return
+    method = _launch_browser(url)
+    if method:
+        print(f"[情報] ブラウザを開きました（{method}）: {url}")
+    else:
+        print(f"[情報] ブラウザを自動で開けませんでした。手動で開いてください: {url}")
 
 
 def run(config: Config | None = None) -> int:
@@ -450,11 +479,15 @@ def run(config: Config | None = None) -> int:
     print(f"  LiveSub Local   {url}/studio")
     print(f"  OBS ブラウザ    {url}/view")
     print(f"  翻訳エンジン    {engine}（{region}）")
+    print(f"  設定ファイル    {config.path}")
     print("  停止するには、この画面で Ctrl+C を押します。")
     print("=" * 60)
 
     if config.server.open_browser:
-        threading.Thread(target=_open_browser, args=(url,), daemon=True).start()
+        print("[情報] 起動後にブラウザを自動で開きます（open_browser = true）。")
+        threading.Thread(target=_open_browser, args=(host, port), daemon=True).start()
+    else:
+        print(f"[情報] open_browser = false のため自動では開きません: {url}/studio")
 
     app = create_app(config)
     try:
