@@ -127,3 +127,12 @@ POST /api/engine/test -> {"ok":true,"engine":"mock","sample":"［mock·zh］こ�
 Node 版服务端曾在这里并行实现过（`node/`，含 30 个 node:test 用例与 SEA 打包脚本），
 因使用体验不如 Python 版，已整体移到 **`js` 分支**（`git switch js` 可查看）。
 `main` 只保留 Python 实现。
+
+## 发布：v0.1.0（2026-11-02）
+
+- 发布说明：[docs/releases/v0.1.0.md](releases/v0.1.0.md)（日语，GitHub Release 正文直接用这份）
+- 标题：LiveSub Local v0.1.0
+- 标签：v0.1.0（annotated）
+- 产物：dist\LiveSubLocal.exe（16,456,972 字节）
+  SHA256 E5EE5C143715AB52CFCF71F234412F6DFFF76DF22C142F440873EF8D172C9033
+- dist\RELEASE_NOTES.md / RELEASE_TAG.txt / RELEASE_TITLE.txt 是给发布流程用的副本（dist 不入库）。
