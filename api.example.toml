@@ -1,19 +1,23 @@
-# 千问 API 配置模板 —— 这个文件可以提交到 GitHub
+# Qwen API 設定の雛形 — このファイルは GitHub にコミットできます
 #
-# 用法：
-#   1. 复制本文件为 api.toml
+# 使い方：
+#   1. このファイルを api.toml にコピーします
 #        copy api.example.toml api.toml
-#   2. 用记事本打开 api.toml，把 qwen.api_key 填成你自己的 Key
-#   3. 重新运行 start.bat
+#   2. メモ帳で api.toml を開き、qwen.api_key に自分のキーを入れます
+#   3. start.bat を実行し直します
 #
-# api.toml 已经写进 .gitignore，不会提交；api.example.toml 里没有任何真实 Key。
-# 不要截图 api.toml，不要把它发到聊天/群里，不要上传网盘。
+# api.toml は .gitignore 済みでコミットされません。api.example.toml には実際のキーは入っていません。
+# api.toml をスクリーンショットに撮らない、チャットやグループに貼らない、クラウドに上げない。
 
 [qwen]
-# 阿里云百炼（DashScope）控制台 → API-KEY，形如 sk-xxxxxxxxxxxxxxxx
+# アリババクラウド百錬（DashScope）コンソール → API-KEY。形式は sk-xxxxxxxxxxxxxxxx
 api_key = ""
-# OpenAI 兼容接口地址；账号有专属部署时改成自己的地址
-endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+# リージョン：cn = 中国本土（北京）/ intl = 海外（シンガポール）
+# API キーはリージョンごとに発行されます。海外アカウントのキーは intl を選んでください。
+# コントロールパネルからも切り替えられます（settings.json に保存）。
+region = "cn"
 model = "qwen-mt-flash"
-# 单句翻译超时（秒）
+# 1 文あたりのタイムアウト（秒）
 timeout_s = 10
+# 専用デプロイを使う場合だけ、下の行を有効にして URL を指定します。
+# endpoint = "https://your-endpoint.example.com/v1/chat/completions"

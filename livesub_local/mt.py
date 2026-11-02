@@ -61,7 +61,7 @@ class QwenTranslator:
 
     @property
     def endpoint(self) -> str:
-        return self.config.endpoint
+        return self.config.resolved_endpoint()
 
     async def translate(self, text: str, source_language: str, target_language: str) -> str:
         if (source_language not in LANGUAGE_NAMES or target_language not in LANGUAGE_NAMES
@@ -79,7 +79,7 @@ class QwenTranslator:
         }
         try:
             response = await self._client.post(
-                self.config.endpoint,
+                self.config.resolved_endpoint(),
                 json=body,
                 headers={
                     "Authorization": "Bearer " + self.config.api_key,

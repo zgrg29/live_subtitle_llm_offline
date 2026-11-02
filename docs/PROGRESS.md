@@ -1,88 +1,112 @@
 # 进度台账
 
 > 状态：当前。每次会话结束更新；没有证据的条目标「未验」，不要写成完成。
-> 最后更新：2026-11-02（第 1 场）
+> 最后更新：2026-11-02（第 1 场，续）
 
 ## 里程碑
 
 | 里程碑 | 状态 | 说明 |
 |---|---|---|
-| M0 工程基座 | **已完成** | 仓库、配置模板、工作流文档、可启动服务、28 个离线测试 |
-| M0.5 单文件 exe | **已完成（真机桌面未验）** | `dist\LiveSubLocal.exe` 已打包并跑通 HTTP/WS |
+| M0 工程基座 | **已完成** | 仓库、配置模板、工作流文档、可启动服务、39 个离线测试 |
+| M0.5 单文件 exe | **已完成（双击自动开浏览器未由人确认）** | `dist\LiveSubLocal.exe` 已打包并跑通 HTTP/WS |
 | M1 最小闭环 | **进行中** | 链路已实现；真机 Chrome 语音、真千问 Key、OBS 渲染未验 |
-| M2 显示与 OBS 打磨 | 未开始 | 现有渲染是简化版；主题/样式热更新没做 |
+| M2 显示与 OBS 打磨 | **进行中** | Apple 风格控制台 + 14 项样式 + 实时生效已做；主题预设/自动消失细节未打磨 |
 | M3 稳定性与延迟 | 未开始 | 没有延迟埋点、没有长跑验证 |
-| M4 上手体验 | 部分 | 有 exe / install / start，Key 校验提示还没做 |
+| M4 上手体验 | 部分 | exe / install / start 都有；Key 缺失提示已有，但没有「保存 Key」表单 |
 | M5 可选增强 | 未开始 | 多目标语言、术语表、历史导出 |
 
 ## 第 1 场（2026-11-02）
 
 ### 完成
 
-- 建仓库骨架：`AGENTS.md`、`README.md`、`docs/`（计划/进度/下一场/架构/决策/参考笔记）、
-  `config.example.toml`、`api.example.toml`、`.gitignore`。
-- 实现 `livesub_local/`：
-  - `config.py`：读 `config.toml` + `api.toml`，校验语言/条数/端口，支持 UTF-8 BOM、frozen 路径。
-  - `mt.py`：千问 MT 适配器（请求形状与参考 `qwen_mt_http.py` 一致）+ `mock` 适配器。
-  - `hub.py`：会话、字幕滚动窗口、串行翻译队列、viewer 快照广播。
-  - `server.py`：`/studio`、`/view`、`/api/health`、`/api/display`、`/v1/text`、`/v1/view`。
-  - `static/studio.html`：**日语**控制台；Chrome Web Speech 识别 + 切句（14 字 / 800ms 停顿 / 2.5s 上限）；
-    翻译方向固定 **日本語 → 中文**；底部加「OBS 字幕の見た目を変える（AI 用プロンプト）」栏（一键复制）。
-  - `static/view.html`：最近 N 对字幕、字号/描边/位置/淡入淡出/自动淡出。
-- `run.py`、`start.bat`、`install.bat`、`build_exe.bat`。
-- 打包单文件 exe（PyInstaller，`--runtime-tmpdir .`），并实测启动。
-- 28 个离线测试（配置、翻译、状态机、HTTP/WS）。
+**工程与链路**
+- 仓库骨架：`AGENTS.md`、`README.md`（日语）、`docs/`、`config.example.toml`、`api.example.toml`、`.gitignore`。
+- `livesub_local/`：`config.py`（config.toml + api.toml，支持 BOM、frozen 路径）、`mt.py`
+  （千问 MT + mock）、`hub.py`（会话/滚动窗口/串行翻译队列/广播）、`server.py`（HTTP + 两个 WS）。
+- 控制台是**日语**，翻译方向固定 **日本語 → 中文**。
+- 单文件 exe：PyInstaller `--onefile --console --runtime-tmpdir .`，首次运行在 exe 旁生成配置。
+
+**控制台改版（对齐参考项目的 Apple 风格）**
+- `static/ui.css`：从参考 `hosted-ui.css` 精简的 Apple 设计系统（明/暗/跟随系统、卡片、胶囊按钮、
+  表单、电平表），控制台顶部有主题切换。
+- `static/subtitle.css` + `static/style.js`：字幕渲染共享层，`/studio` 预览与 `/view` 用同一套 CSS 变量。
+- 字幕样式 14 项（字体、原/译文字号与颜色、描边、背景色与不透明度、位置、句数 2–6、
+  排列顺序、边距、行距、保留秒数），改完**立刻**推到 `/view`，OBS 不用刷新；
+  样式存 `settings.json`，重启后保留。
+- 麦克风：设备选择、输入增益、实时电平表（dBFS，Web Audio + AnalyserNode）、「マイクを確認」。
+- 控制台底部保留「OBS 自定义 CSS 用 AI 提示词」，已改写成本页真实 DOM 与变量。
+
+**千问区域切换**
+- 控制台「翻訳エンジン」卡片可选 `cn`（中国大陆/北京）与 `intl`（海外/新加坡），
+  有「接続テスト」按钮；配信中禁止切换（服务端返回 409）；选择存 `settings.json`。
+
+**终端与配置的语言**
+- `run.py` 启动时的所有输出改为日语，并 `chcp 65001` + `sys.stdout.reconfigure(utf-8)`。
+- `start.bat` / `install.bat` / `build_exe.bat` / `config.example.toml` / `api.example.toml` 全部日语。
+- 浏览器自动打开改为「轮询 `/api/health` 就绪 → `os.startfile` → `webbrowser` → `cmd start`」多级兜底。
 
 ### 证据
 
 ```
 $ python -m unittest discover -s tests
-Ran 28 tests in 0.628s
+Ran 39 tests in 1.081s
 OK
 ```
 
-源码方式启动 + WebSocket 冒烟（`.tmp/ws_probe.py`，未入库）：
+源码方式启动（`python -u run.py`，端口 8810）控制台输出：
 
 ```
-health 200 {'ok': True, 'engine': 'mock', ...}
-studio 200 True
-ready ready engine= mock
-translation ［mock·zh］こんにちは、今日はいい天気ですね
-SMOKE OK
+[情報] Qwen の API Key が読めません（D:\live_subtitle_llm_offline\api.toml）。
+       mock モードで起動します。訳文はダミーです。
+============================================================
+  LiveSub Local   http://127.0.0.1:8810/studio
+  OBS ブラウザ    http://127.0.0.1:8810/view
+  翻訳エンジン    mock（cn）
+  停止するには、この画面で Ctrl+C を押します。
+============================================================
 ```
 
-exe 冒烟（干净文件夹 `.\tmp\exe-test2\`，只放了 exe + config.toml）：
+新 UI 的 HTTP 冒烟（8805）：
 
 ```
-首次运行自动生成 api.toml（775 字节，来自模板）
-health: 200 {"ok":true,"engine":"mock",...}
-studio: 200 len=12712 japanese=True
-view-first idle
-ready ready mock ja ['zh']
-translation ［mock·zh］こんにちは、今日はいい天気ですね
-EXE WS OK
+/studio -> 200 (24728 bytes)  japanese title: True / meter: True / style form: True
+/static/ui.css -> 200 (12286) /static/style.js -> 200 (1889) /static/subtitle.css -> 200 (930)
+POST /api/display {"target_size":88,"pairs":9} -> 200, 夹到 pairs=6, position=top
+GET  /v1/view 第一帧 display.target_size = 88（说明样式随快照下发）
+字幕：［mock·zh］こんばんは
+```
+
+exe 冒烟（`dist\LiveSubLocal.exe`，8808）：
+
+```
+/api/health -> {"ok":true,"engine":"mock","region":"cn",...}
+/api/engine -> cn / intl 两个 endpoint 都在
+POST /api/engine {"region":"intl"} -> region=intl, endpoint=dashscope-intl...
+POST /api/engine/test -> {"ok":true,"engine":"mock","sample":"［mock·zh］こんにちは"}
+重启后 region 仍是 intl（settings.json 生效）
 ```
 
 ### 未验证（必须下一场补）
 
-- **真机 Chrome 语音识别**：`studio.html` 没有在浏览器里真正点过「開始」，切句参数是否合适未知。
-- **真千问 Key**：只有 mock 与 `httpx.MockTransport` 离线测试，没有真实请求过 DashScope。
-- **OBS 渲染**：`view.html` 没在 OBS 浏览器源里看过；字体/描边/透明背景/自定义 CSS 的效果都未验。
-- **exe 双击 + 自动开浏览器**：命令行启动时 `open_browser=false`，没有验证「双击后浏览器自动弹出」。
+- **真机 Chrome 点击「字幕を開始」并说话**：切句参数、识别质量、真实延迟都没验。
+- **真千问 Key 的翻译**：只有 mock 与 httpx.MockTransport 离线测试，未真实请求 DashScope；
+  `cn` / `intl` 两个区域都没用真 Key 试过。
+- **OBS 渲染**：`/view` 没在 OBS 浏览器源里看过；字体、描边、背景、自定义 CSS 都未验。
+- **exe 双击自动开浏览器**：代码已改为等待就绪后 `os.startfile`，但窗口是否真的弹出没有由人确认。
+- **exe 控制台的日文显示**：源码模式已确认；exe 里没有截到输出（重定向时被缓冲），
+  字体是否支持日文取决于用户机器的控制台字体。
 - 控制台的日语文案没有母语者校对。
 
 ### 已知问题
 
-- 单文件 exe 解压到自身目录，所以 exe 必须放在**可写**文件夹（别放 `C:\Program Files`）。
-- 单文件启动要解压，冷启动约 1–2 秒。
-- `/api/display` 只在页面加载时取一次：改字号/条数后要刷新 `/view`。
-- 没有延迟埋点（A 识别定稿 → B 翻译返回 → C 显示）。
-- 本会话的沙箱禁止写系统 Temp，pip/pyinstaller/exe 都要用「完整权限」跑；这是环境问题，不是项目问题。
-- 本会话的沙箱还禁止写 `.git`（`index.lock: Permission denied`），所以 `git add/commit` 也用了「完整权限」；
-  正常桌面环境不会这样。首次提交：`2325866`，27 个文件。
+- 单文件 exe 解压到自身目录，必须放在可写文件夹（别放 `C:\Program Files`）；冷启动 1–2 秒。
+- 配信中不能切换区域（会返回 409），需要先停止。
+- `/view` 的 `clear_after_ms` 淡出后不会自动清空 DOM，只是透明；刷新或新句到来即恢复。
+- 本会话沙箱禁止写系统 Temp 与 `.git`，pip / pyinstaller / exe / commit 都需要「完整权限」；
+  这是环境限制，不是项目问题。
 
 ### 下一步候选（等用户选）
 
 - A. 真机 M1 验收：双击 exe、填真 Key、Chrome 说话、OBS 看效果，记录实际延迟与切句问题。
-- B. M2 显示打磨：2–6 对、位置、主题、样式热更新（不刷新 OBS）。
+- B. M2 收尾：主题预设、字幕淡出行为、界面文案校对。
 - C. M3 延迟与稳定性：埋点、长跑、断线重连。

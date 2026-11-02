@@ -7,9 +7,10 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 
@@ -62,12 +63,31 @@ class ServerConfig:
     open_browser: bool = True
 
 
+# 千问的两个区域：大陆（北京）与海外（新加坡）。API Key 按区域签发，不能混用。
+QWEN_ENDPOINTS = {
+    "cn": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "intl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+}
+DEFAULT_ENDPOINT = QWEN_ENDPOINTS["cn"]
+QWEN_REGIONS = ("cn", "intl")
+
+DEFAULT_FONT_FAMILY = ('"Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", "Microsoft YaHei", '
+                       '-apple-system, BlinkMacSystemFont, sans-serif')
+
+
 @dataclass(frozen=True)
 class QwenConfig:
     api_key: str = ""
-    endpoint: str = DEFAULT_ENDPOINT
+    region: str = "cn"        # cn = 中国大陆 / intl = 海外
+    endpoint: str = ""        # 专用部署时才填；空则按 region 自动选
     model: str = "qwen-mt-flash"
     timeout_s: float = 10.0
+
+    def resolved_endpoint(self) -> str:
+        return self.endpoint.strip() or QWEN_ENDPOINTS.get(self.region, DEFAULT_ENDPOINT)
+
+    def with_region(self, region: str) -> "QwenConfig":
+        return replace(self, region=region, endpoint="")
 
 
 @dataclass(frozen=True)
@@ -79,16 +99,88 @@ class SubtitleConfig:
     engine: str = "auto"  # auto | qwen | mock
 
 
+DEFAULT_FONT_FAMILY = ('"Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", "Microsoft YaHei", '
+                       '-apple-system, BlinkMacSystemFont, sans-serif')
+
+
 @dataclass(frozen=True)
 class DisplayConfig:
-    pairs: int = 3
-    show_source: bool = True
-    position: str = "bottom"
-    source_size: int = 26
-    target_size: int = 44
+    # 字幕样式（与参考项目 hosted-studio.html 的 [字幕スタイル] 表单一一致）
+    font_family: str = DEFAULT_FONT_FAMILY
+    target_size: int = 44        # 訳文の文字サイズ
+    source_size: int = 26        # 原文の文字サイズ
+    target_color: str = "#ffffff"
+    source_color: str = "#b9c6d4"
+    outline_color: str = "#000000"
     outline_width: int = 4
+    background_color: str = "#000000"
+    background_alpha: int = 0    # 0-100
+    position: str = "bottom"     # bottom | top
+    pairs: int = 3               # 2-6
+    order: str = "bottom"        # bottom=新しい文が下 / top=上
+    margin_percent: int = 8      # 0-45
+    line_gap: int = 10           # 0-40
+    clear_after_ms: int = 5000   # 0-30000
     fade_ms: int = 160
-    clear_after_ms: int = 6000
+    show_source: bool = True
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
+# 允许的取值：服务端用它校验 POST /api/display，越界就夹到区间里。
+DISPLAY_INT_RANGES = {
+    "target_size": (12, 140),
+    "source_size": (10, 120),
+    "outline_width": (0, 12),
+    "background_alpha": (0, 100),
+    "pairs": (2, 6),
+    "margin_percent": (0, 45),
+    "line_gap": (0, 40),
+    "clear_after_ms": (0, 30000),
+    "fade_ms": (0, 2000),
+}
+DISPLAY_COLORS = ("target_color", "source_color", "outline_color", "background_color")
+DISPLAY_CHOICES = {"position": ("bottom", "top"), "order": ("bottom", "top")}
+DISPLAY_BOOLS = ("show_source",)
+DISPLAY_TEXT_MAX = {"font_family": 160}
+
+_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def normalize_display(patch: dict, base: dict | None = None) -> dict:
+    """把外部传入的样式合并进 base 并校验；越界夹紧、非法值忽略。"""
+    result = dict(base or DISPLAY_DEFAULTS)
+    if not isinstance(patch, dict):
+        raise ValueError("display 必须是对象")
+    for key, value in patch.items():
+        if key in DISPLAY_INT_RANGES:
+            low, high = DISPLAY_INT_RANGES[key]
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"{key} 必须是数字")
+            result[key] = max(low, min(high, int(round(value))))
+        elif key in DISPLAY_COLORS:
+            if not isinstance(value, str) or not _COLOR_RE.match(value.strip()):
+                raise ValueError(f"{key} 必须是 #rrggbb")
+            result[key] = value.strip().lower()
+        elif key in DISPLAY_CHOICES:
+            if value not in DISPLAY_CHOICES[key]:
+                raise ValueError(f"{key} 只能是 {' / '.join(DISPLAY_CHOICES[key])}")
+            result[key] = value
+        elif key in DISPLAY_BOOLS:
+            if not isinstance(value, bool):
+                raise ValueError(f"{key} 必须是 true / false")
+            result[key] = value
+        elif key in DISPLAY_TEXT_MAX:
+            if not isinstance(value, str) or len(value) > DISPLAY_TEXT_MAX[key]:
+                raise ValueError(f"{key} 必须是长度不超过 {DISPLAY_TEXT_MAX[key]} 的字符串")
+            result[key] = "".join(ch for ch in value if ch.isprintable()).strip() or DEFAULT_FONT_FAMILY
+        else:
+            raise ValueError(f"未知的样式字段：{key}")
+    return result
+
+
+DISPLAY_DEFAULTS = DisplayConfig().as_dict()
 
 
 @dataclass(frozen=True)
@@ -189,6 +281,16 @@ def load_config(path: str | Path | None = None, api_path: str | Path | None = No
     if engine not in ("auto", "qwen", "mock"):
         raise ValueError("engine 只能是 auto / qwen / mock")
 
+    region = _text(qwen, "region", "cn").strip().lower()
+    endpoint = _text(qwen, "endpoint", "").strip()
+    # 旧配置把默认地址直接写在 endpoint 里：当成“没指定”，按区域处理。
+    for code, url in QWEN_ENDPOINTS.items():
+        if endpoint == url:
+            region, endpoint = code, ""
+            break
+    if region not in QWEN_REGIONS:
+        raise ValueError("region 只能是 cn（中国大陆）/ intl（海外）")
+
     port_env = os.environ.get("LIVESUB_LOCAL_PORT")
     port = _int(server, "port", 8765, 1, 65535)
     if port_env:
@@ -202,7 +304,8 @@ def load_config(path: str | Path | None = None, api_path: str | Path | None = No
         ),
         qwen=QwenConfig(
             api_key=api_key,
-            endpoint=_text(qwen, "endpoint", DEFAULT_ENDPOINT).strip(),
+            region=region,
+            endpoint=endpoint,
             model=_text(qwen, "model", "qwen-mt-flash").strip(),
             timeout_s=float(qwen.get("timeout_s", 10.0)),
         ),
@@ -213,16 +316,7 @@ def load_config(path: str | Path | None = None, api_path: str | Path | None = No
             min_interval_ms=_int(subtitle, "min_interval_ms", 120, 0, 5000),
             engine=engine,
         ),
-        display=DisplayConfig(
-            pairs=_int(display, "pairs", 3, 1, 6),
-            show_source=_bool(display, "show_source", True),
-            position=_text(display, "position", "bottom").strip().lower(),
-            source_size=_int(display, "source_size", 26, 8, 200),
-            target_size=_int(display, "target_size", 44, 8, 200),
-            outline_width=_int(display, "outline_width", 4, 0, 20),
-            fade_ms=_int(display, "fade_ms", 160, 0, 5000),
-            clear_after_ms=_int(display, "clear_after_ms", 6000, 0, 600000),
-        ),
+        display=DisplayConfig(**normalize_display(display, DISPLAY_DEFAULTS)),
         path=config_path,
         api_path=api_file,
     )

@@ -9,16 +9,20 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import shutil
 import socket
+import subprocess
 import sys
 import threading
+import time
+import urllib.request
 import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -27,9 +31,12 @@ from .config import (
     BUNDLE_ROOT,
     DEFAULT_API_PATH,
     LANGUAGE_NAMES,
+    QWEN_ENDPOINTS,
+    QWEN_REGIONS,
     Config,
     application_dir,
     load_config,
+    normalize_display,
 )
 from .hub import Hub
 from .mt import MockTranslator, QwenTranslator
@@ -44,12 +51,52 @@ def _static_dir() -> Path:
 STATIC_DIR = _static_dir()
 log = logging.getLogger("livesub_local")
 
+SETTINGS_NAME = "settings.json"
 
-def build_translator(config: Config):
-    engine = config.engine()
-    if engine == "qwen":
-        return QwenTranslator(config.qwen), "qwen"
-    return MockTranslator(), "mock"
+
+def _settings_path() -> Path:
+    return application_dir() / SETTINGS_NAME
+
+
+def _load_settings(config: Config, path: Path) -> dict:
+    """settings.json > config.toml > 默认值。返回 {"display": {...}, "region": "cn"|"intl"}。"""
+    settings = {"display": config.display.as_dict(), "region": config.qwen.region}
+    if not path.exists():
+        return settings
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        log.warning("settings.json 无法读取，改用 config.toml 的设置")
+        return settings
+    if not isinstance(raw, dict):
+        return settings
+    try:
+        settings["display"] = normalize_display(raw.get("display", raw), settings["display"])
+    except ValueError:
+        pass
+    if raw.get("region") in QWEN_REGIONS:
+        settings["region"] = raw["region"]
+    return settings
+
+
+def _save_settings(settings: dict, path: Path) -> None:
+    try:
+        path.write_text(
+            json.dumps(settings, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except OSError:
+        log.warning("设置保存失败（%s）", path)
+
+
+def build_translator(config: Config, region: str | None = None):
+    region = region or config.qwen.region
+    if config.subtitle.engine == "mock":
+        return MockTranslator(), "mock"
+    qwen_config = config.qwen.with_region(region)
+    if not qwen_config.api_key:
+        return MockTranslator(), "mock"
+    return QwenTranslator(qwen_config), "qwen"
 
 
 def create_app(
@@ -57,13 +104,21 @@ def create_app(
     *,
     translator=None,
     engine: str | None = None,
+    settings_path: Path | None = None,
 ) -> FastAPI:
     if config is None:
         config = load_config()
+
+    settings_file = Path(settings_path) if settings_path is not None else _settings_path()
+    settings = _load_settings(config, settings_file)
+    region = settings["region"]
+
     if translator is None:
-        translator, engine = build_translator(config)
+        translator, engine = build_translator(config, region)
     elif engine is None:
         engine = "mock"
+
+    display_state = settings["display"]
 
     hub = Hub(
         translator,
@@ -71,6 +126,7 @@ def create_app(
         config.subtitle.target_languages,
         max_sentences=config.subtitle.max_sentences,
         min_interval_ms=config.subtitle.min_interval_ms,
+        display=display_state,
     )
 
     @asynccontextmanager
@@ -84,6 +140,10 @@ def create_app(
     app.state.config = config
     app.state.hub = hub
     app.state.engine = engine
+    app.state.region = region
+    app.state.display = display_state
+    app.state.settings = settings
+    app.state.settings_file = settings_file
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     def page(name: str) -> FileResponse:
@@ -109,27 +169,78 @@ def create_app(
         session = hub.session
         return {
             "ok": True,
-            "engine": engine,
-            "model": config.qwen.model if engine == "qwen" else None,
+            "engine": app.state.engine,
+            "region": app.state.region,
+            "model": config.qwen.model if app.state.engine == "qwen" else None,
             "session": session.session_id if session else None,
             "stats": session.stats if session else None,
         }
 
+    @app.get("/api/engine")
+    async def engine_info():
+        qwen = config.qwen.with_region(app.state.region)
+        return {
+            "engine": app.state.engine,
+            "region": app.state.region,
+            "endpoint": qwen.resolved_endpoint(),
+            "model": qwen.model,
+            "has_key": bool(qwen.api_key),
+            "regions": [
+                {"code": code, "endpoint": url} for code, url in QWEN_ENDPOINTS.items()
+            ],
+        }
+
+    @app.post("/api/engine")
+    async def switch_engine(payload: dict = Body(...)):
+        region = payload.get("region")
+        if region not in QWEN_REGIONS:
+            raise HTTPException(status_code=400, detail="region 只能是 cn / intl")
+        if hub.session is not None:
+            raise HTTPException(status_code=409, detail="配信中は変更できません")
+        translator_new, engine_new = build_translator(config, region)
+        await hub.set_translator(translator_new)
+        app.state.engine = engine_new
+        app.state.region = region
+        app.state.settings["region"] = region
+        _save_settings(app.state.settings, settings_file)
+        return await engine_info()
+
+    @app.post("/api/engine/test")
+    async def test_engine():
+        try:
+            sample = await hub.probe()
+        except Exception as exc:  # MTError を含む
+            return {"ok": False, "error": getattr(exc, "code", "unavailable")}
+        return {"ok": True, "engine": app.state.engine, "sample": sample}
+
     @app.get("/api/display")
     async def display():
-        settings = config.display
         return {
-            "pairs": settings.pairs,
-            "show_source": settings.show_source,
-            "position": settings.position,
-            "source_size": settings.source_size,
-            "target_size": settings.target_size,
-            "outline_width": settings.outline_width,
-            "fade_ms": settings.fade_ms,
-            "clear_after_ms": settings.clear_after_ms,
+            **app.state.display,
             "source_language": config.subtitle.source_language,
             "target_languages": list(config.subtitle.target_languages),
         }
+
+    @app.post("/api/display")
+    async def update_display(patch: dict = Body(...)):
+        try:
+            merged = normalize_display(patch, app.state.display)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        app.state.display = merged
+        hub.update_display(merged)
+        app.state.settings["display"] = merged
+        _save_settings(app.state.settings, settings_file)
+        return {**merged, "ok": True}
+
+    @app.post("/api/display/reset")
+    async def reset_display():
+        merged = dict(config.display.as_dict())
+        app.state.display = merged
+        hub.update_display(merged)
+        app.state.settings["display"] = merged
+        _save_settings(app.state.settings, settings_file)
+        return {**merged, "ok": True}
 
     @app.get("/api/languages")
     async def languages():
@@ -161,7 +272,7 @@ def create_app(
             {
                 "type": "ready",
                 "session": session.session_id,
-                "engine": engine,
+                "engine": app.state.engine,
                 "source_language": session.source_language,
                 "targets": list(session.targets),
             }
@@ -205,23 +316,28 @@ def create_app(
             return
 
         async def pump():
-            while True:
-                payload = await queue.get()
-                await socket_ws.send_json(payload)
+            try:
+                while True:
+                    payload = await queue.get()
+                    await socket_ws.send_json(payload)
+            except (WebSocketDisconnect, RuntimeError):
+                return
 
         async def watch():
             # 只为感知断开；浏览器不会主动发消息。
-            while True:
-                await socket_ws.receive_text()
+            try:
+                while True:
+                    await socket_ws.receive_text()
+            except (WebSocketDisconnect, RuntimeError):
+                return
 
         sender = asyncio.create_task(pump())
         receiver = asyncio.create_task(watch())
         try:
-            await asyncio.wait({sender, receiver}, return_when=asyncio.FIRST_COMPLETED)
+            await receiver
         finally:
-            for task in (sender, receiver):
-                task.cancel()
-            await asyncio.gather(sender, receiver, return_exceptions=True)
+            sender.cancel()
+            await asyncio.gather(sender, return_exceptions=True)
             hub.unsubscribe(queue)
 
     return app
@@ -246,10 +362,60 @@ def _prepare_runtime_files() -> None:
         template = BUNDLE_ROOT / f"{name}.example.toml"
         if not target.exists() and template.exists():
             shutil.copyfile(template, target)
-            print(f"[提示] 已生成 {target}")
+            print(f"[情報] {target} を作成しました。")
+
+
+def _setup_console() -> None:
+    """Windows のコンソールで日本語が文字化けしないように UTF-8 に切り替える。"""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        ctypes.windll.kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+def _open_browser(url: str, timeout: float = 25.0) -> None:
+    """サーバーが応答できるようになってからブラウザを開く（exe でも確実に開く）。"""
+    target = url + "/studio"
+    health = url + "/api/health"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(health, timeout=1) as response:
+                if response.status == 200:
+                    break
+        except Exception:
+            time.sleep(0.3)
+
+    print(f"[情報] ブラウザで {target} を開きます。")
+    if os.name == "nt":
+        try:
+            os.startfile(target)  # type: ignore[attr-defined]
+            return
+        except OSError:
+            pass
+    try:
+        if webbrowser.open_new_tab(target):
+            return
+    except Exception:
+        pass
+    try:
+        subprocess.Popen(["cmd", "/c", "start", "", target], close_fds=True)
+    except OSError:
+        print(f"[情報] ブラウザを自動で開けませんでした。{target} を手動で開いてください。")
 
 
 def run(config: Config | None = None) -> int:
+    _setup_console()
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -260,34 +426,35 @@ def run(config: Config | None = None) -> int:
         try:
             config = load_config()
         except ValueError as exc:
-            print(f"[错误] 配置文件有问题：{exc}")
-            print(f"       检查 {DEFAULT_API_PATH} 和 config.toml 的写法（错别字/漏引号都会导致这个错误）。")
+            print(f"[エラー] 設定ファイルに問題があります: {exc}")
+            print(f"         {DEFAULT_API_PATH} と config.toml の書き方を確認してください。")
             return 1
 
     host, port = config.server.host, config.server.port
     if not _port_available(host, port):
-        print(f"[错误] 端口 {port} 已被占用。请修改 config.toml 里的 [server].port 后重试。")
+        print(f"[エラー] ポート {port} は使用中です。config.toml の [server].port を変えてください。")
         return 1
 
     if config.path is None or not config.path.exists():
-        print(f"[提示] 没有找到 {config.path}，使用默认配置。")
+        print(f"[情報] {config.path} が見つからないため、既定値で起動します。")
 
-    engine = config.engine()
+    engine = "qwen" if (config.subtitle.engine != "mock" and config.qwen.api_key) else "mock"
+    region = config.qwen.region
     if engine == "mock":
-        print(f"[提示] 没有读到千问 API Key（{config.api_path or DEFAULT_API_PATH}）。")
-        print("       现在是 mock 模式，译文只是占位文字。")
-        print("       用记事本打开上面这个文件，填好 qwen.api_key，关掉本窗口重新运行。")
+        print(f"[情報] Qwen の API Key が読めません（{config.api_path or DEFAULT_API_PATH}）。")
+        print("       mock モードで起動します。訳文はダミーです。")
+        print("       このファイルをメモ帳で開き、qwen.api_key を入れてから再起動してください。")
 
     url = f"http://{host}:{port}"
-    print("=" * 56)
-    print(f"  LiveSub Local  {url}/studio")
-    print(f"  OBS 浏览器源   {url}/view")
-    print(f"  翻译引擎       {engine}")
-    print("  停止服务：在这个窗口按 Ctrl+C")
-    print("=" * 56)
+    print("=" * 60)
+    print(f"  LiveSub Local   {url}/studio")
+    print(f"  OBS ブラウザ    {url}/view")
+    print(f"  翻訳エンジン    {engine}（{region}）")
+    print("  停止するには、この画面で Ctrl+C を押します。")
+    print("=" * 60)
 
     if config.server.open_browser:
-        threading.Timer(1.0, lambda: webbrowser.open(url + "/studio")).start()
+        threading.Thread(target=_open_browser, args=(url,), daemon=True).start()
 
     app = create_app(config)
     try:

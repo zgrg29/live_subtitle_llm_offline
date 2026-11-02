@@ -3,17 +3,17 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 if not exist ".venv\Scripts\python.exe" (
-  echo [提示] 先安装依赖 ...
+  echo [情報] 先に依存パッケージをインストールします...
   call install.bat
 )
 
-echo [1/2] 安装 PyInstaller ...
+echo [1/2] PyInstaller をインストールしています...
 ".venv\Scripts\python.exe" -m pip install --upgrade pyinstaller
 if errorlevel 1 goto failed
 
-echo [2/2] 打包（大约 1-3 分钟）...
-rem --runtime-tmpdir . ：解压到 exe 所在目录而不是系统临时目录，
-rem 避免少数机器上 Temp 被安全软件/组策略锁住时报 "Could not create temporary directory"。
+echo [2/2] exe をビルドしています（1〜3 分ほど）...
+rem --runtime-tmpdir . ：システムの一時フォルダではなく exe と同じ場所に展開します。
+rem Temp がセキュリティソフトやグループポリシーで使えない環境でも起動できるようにするためです。
 ".venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean ^
   --onefile --console --name LiveSubLocal --runtime-tmpdir . ^
   --add-data "livesub_local\static;livesub_local\static" ^
@@ -29,13 +29,13 @@ rem 避免少数机器上 Temp 被安全软件/组策略锁住时报 "Could not 
 if errorlevel 1 goto failed
 
 echo.
-echo 打包完成：dist\LiveSubLocal.exe
-echo 把 LiveSubLocal.exe 拷到任意空文件夹，双击运行即可（第一次会生成 api.toml）。
+echo ビルド完了：dist\LiveSubLocal.exe
+echo この exe を任意のフォルダにコピーしてダブルクリックすれば起動します（初回は api.toml を生成）。
 pause
 exit /b 0
 
 :failed
 echo.
-echo [错误] 打包失败，请看上面的报错。
+echo [エラー] ビルドに失敗しました。上のメッセージを確認してください。
 pause
 exit /b 1

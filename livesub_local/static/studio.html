@@ -1,156 +1,540 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LiveSub Local · コンソール</title>
-<style>
-  :root { color-scheme: dark; --bg:#0e1116; --panel:#161b22; --line:#2a313c; --text:#e6edf3;
-          --muted:#8b949e; --accent:#2f81f7; --danger:#f85149; --ok:#3fb950; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.7 "Yu Gothic UI",
-         "Hiragino Sans", "Noto Sans JP", "Microsoft YaHei", system-ui, sans-serif; }
-  main { max-width: 780px; margin: 0 auto; padding: 32px 20px 72px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin-bottom: 24px; }
-  .panel { background: var(--panel); border:1px solid var(--line); border-radius:10px;
-           padding:18px; margin-bottom:16px; }
-  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
-  label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
-  select, input[type=text] { background:#0d1117; color:var(--text); border:1px solid var(--line);
-           border-radius:7px; padding:9px 10px; font-size:15px; min-width:150px; }
-  input[type=text] { flex:1; min-width:220px; }
-  button { border:0; border-radius:7px; padding:10px 18px; font-size:15px; cursor:pointer;
-           background:var(--accent); color:#fff; font-family:inherit; }
-  button.secondary { background:#21262d; border:1px solid var(--line); color:var(--text); }
-  button:disabled { opacity:.45; cursor:not-allowed; }
-  #status { margin-top:14px; min-height:22px; color:var(--muted); }
-  #status.error { color: var(--danger); }
-  #status.ok { color: var(--ok); }
-  .banner { border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:14px; }
-  .banner.warn { background:#3d2c00; border:1px solid #7d5a00; color:#f0c36d; }
-  .banner.hide { display:none; }
-  code.url { background:#0d1117; border:1px solid var(--line); border-radius:6px;
-             padding:7px 10px; display:inline-block; font-size:14px; word-break:break-all; }
-  .hint { color:var(--muted); font-size:13px; margin-top:10px; }
-  .direction { font-size:17px; font-weight:600; padding:7px 0; }
-  .direction .arrow { color:var(--muted); margin:0 8px; }
-  details { margin-top:0; }
-  summary { cursor:pointer; font-weight:600; }
-  .lead { color:var(--muted); font-size:14px; margin:14px 0 10px; }
-  ol.steps { margin:0 0 14px 1.2em; padding:0; color:var(--muted); font-size:14px; }
-  ol.steps li { margin-bottom:4px; }
-  .prompt-head { display:flex; justify-content:space-between; align-items:center; gap:12px;
-                 font-size:13px; color:var(--muted); margin-bottom:8px; }
-  pre.prompt { margin:0; background:#0d1117; border:1px solid var(--line); border-radius:8px;
-               padding:14px; font-size:12.5px; line-height:1.65; color:#c9d1d9;
-               max-height:340px; overflow:auto; white-space:pre-wrap; }
-  .note { color:var(--muted); font-size:12.5px; margin:10px 0 0; }
-  .debug-row { display:flex; gap:10px; margin-top:12px; }
-  .badge { font-size:12px; padding:2px 8px; border-radius:999px; background:#21262d;
-           border:1px solid var(--line); color:var(--muted); }
-</style>
+<title>LiveSub Local · 字幕スタジオ</title>
+<link rel="stylesheet" href="/static/ui.css">
+<link rel="stylesheet" href="/static/subtitle.css">
 </head>
 <body>
-<main>
-  <h1>LiveSub Local</h1>
-  <div class="sub">ローカルリアルタイム字幕 · 話す → 認識 → Qwen 翻訳 → OBS
-    <span id="engine-badge" class="badge">…</span></div>
+<header class="appbar">
+  <a class="brand" href="/studio">LiveSub Local <small>字幕スタジオ</small></a>
+  <span class="spacer"></span>
+  <div class="theme-switch" role="group" aria-label="外観">
+    <button class="theme-opt" type="button" data-theme-opt="light" title="ライト" aria-pressed="false">☀</button>
+    <button class="theme-opt" type="button" data-theme-opt="dark" title="ダーク" aria-pressed="false">☾</button>
+    <button class="theme-opt" type="button" data-theme-opt="auto" title="自動" aria-pressed="true">A</button>
+  </div>
+</header>
 
-  <div id="banner" class="banner warn hide"></div>
+<main class="shell">
+  <p class="eyebrow">Subtitle studio</p>
+  <h1>字幕スタジオ</h1>
+  <p class="lead">マイクを選び、字幕を整えて、OBS につなぎます。
+    <span class="badge">日本語 → 中文</span></p>
 
-  <section class="panel">
-    <div class="row">
-      <div>
-        <label>翻訳の向き（この版では固定）</label>
-        <div class="direction">日本語 <span class="arrow">→</span> 中文</div>
-      </div>
-      <button id="start">開始</button>
-      <button id="stop" class="secondary" disabled>停止</button>
+  <div id="banner" class="alert warn" hidden></div>
+
+  <div class="layout">
+    <div class="stack">
+
+      <section class="card">
+        <h2>音声と配信</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="device">マイク</label>
+            <div class="row">
+              <select id="device"></select>
+              <button class="btn btn-secondary btn-sm" id="refresh-devices" type="button">更新</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="gain">入力ゲイン</label>
+            <div class="row">
+              <input type="range" id="gain" min="0.1" max="4" step="0.1" value="1">
+              <output id="gain-o">1.0×</output>
+            </div>
+          </div>
+        </div>
+
+        <div class="meter-box">
+          <div class="meter-head">
+            <label for="mic-check">入力レベル</label>
+            <output id="mic-db">マイク入力を待っています</output>
+          </div>
+          <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
+          <div class="meter-scale"><span>-60</span><span>-36</span><span>-18</span><span>0 dB</span></div>
+          <div class="btn-row" style="margin-top:14px">
+            <button class="btn btn-secondary" id="mic-check" type="button">マイクを確認</button>
+          </div>
+          <p class="hint" style="margin-top:10px">ゲインはこのメーターの表示倍率です。音声はブラウザ内で認識され、外部には送られません。</p>
+        </div>
+
+        <div class="btn-row" style="margin-top:20px">
+          <button class="btn" id="start" type="button">字幕を開始</button>
+          <button class="btn btn-secondary" id="stop" type="button" disabled>停止</button>
+        </div>
+        <p class="hint" id="status">未開始。「字幕を開始」を押すと、ブラウザがマイクの使用許可を求めます。</p>
+      </section>
+
+      <section class="card">
+        <h2>翻訳エンジン</h2>
+        <div class="field">
+          <label for="region">Qwen のリージョン</label>
+          <select id="region">
+            <option value="cn">中国本土（北京）</option>
+            <option value="intl">海外（シンガポール）</option>
+          </select>
+          <p class="hint" style="margin-top:8px">API キーはリージョンごとに発行されます。海外アカウントのキーは
+            「海外」を選んでください。配信中は切り替えできません。</p>
+        </div>
+        <div class="row">
+          <button class="btn btn-secondary" id="test-engine" type="button">接続テスト</button>
+          <span class="hint" id="engine-status">—</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>字幕スタイル</h2>
+        <p class="hint">ここで変えた見た目は、そのまま OBS のプレビューに反映されます（再読み込み不要）。</p>
+
+        <div class="sample-box" style="margin-top:14px">
+          <div id="preview" class="sub-stage" data-position="bottom">
+            <div class="sub-pair">
+              <div class="sub-source">こんにちは、配信へようこそ。</div>
+              <div class="sub-target">你好，欢迎来到直播间。</div>
+            </div>
+          </div>
+        </div>
+
+        <form id="style-form" style="margin-top:20px" autocomplete="off">
+          <div class="grid">
+            <div class="field wide">
+              <label for="font_family">フォント</label>
+              <input id="font_family" maxlength="160" placeholder='"Hiragino Sans", "Yu Gothic UI", sans-serif'>
+              <p class="hint" style="margin-top:8px">ブラウザと OBS の両方に入っているフォント名を、カンマ区切りで。</p>
+            </div>
+            <div class="field">
+              <label for="target_size">訳文の文字サイズ</label>
+              <div class="row"><input type="range" id="target_size" min="12" max="140"><output id="target_size-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="source_size">原文の文字サイズ</label>
+              <div class="row"><input type="range" id="source_size" min="10" max="120"><output id="source_size-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="target_color">訳文の文字色</label>
+              <input type="color" id="target_color">
+            </div>
+            <div class="field">
+              <label for="source_color">原文の文字色</label>
+              <input type="color" id="source_color">
+            </div>
+            <div class="field">
+              <label for="outline_color">縁取りの色</label>
+              <input type="color" id="outline_color">
+            </div>
+            <div class="field">
+              <label for="outline_width">縁取りの太さ</label>
+              <div class="row"><input type="range" id="outline_width" min="0" max="12"><output id="outline_width-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="background_color">背景色</label>
+              <input type="color" id="background_color">
+            </div>
+            <div class="field">
+              <label for="background_alpha">背景の不透明度</label>
+              <div class="row"><input type="range" id="background_alpha" min="0" max="100"><output id="background_alpha-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="position">表示位置</label>
+              <select id="position">
+                <option value="bottom">下</option>
+                <option value="top">上</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="pairs">表示する文数（現在の文を含む）</label>
+              <div class="row"><input type="range" id="pairs" min="2" max="6" step="1"><output id="pairs-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="order">並び順</label>
+              <select id="order">
+                <option value="bottom">新しい文が下</option>
+                <option value="top">新しい文が上</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="margin_percent">端からの距離</label>
+              <div class="row"><input type="range" id="margin_percent" min="0" max="45"><output id="margin_percent-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="line_gap">行間</label>
+              <div class="row"><input type="range" id="line_gap" min="0" max="40"><output id="line_gap-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="clear_after_ms">字幕を残す秒数（0 = 消さない）</label>
+              <div class="row"><input type="range" id="clear_after_ms" min="0" max="30000" step="500"><output id="clear_after_ms-o"></output></div>
+            </div>
+            <div class="field">
+              <label for="show_source">原文を表示する</label>
+              <select id="show_source">
+                <option value="true">表示する</option>
+                <option value="false">表示しない</option>
+              </select>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:6px">
+            <button class="btn btn-secondary" id="reset-style" type="button">既定に戻す</button>
+          </div>
+        </form>
+      </section>
     </div>
-    <div id="status">未開始。「開始」を押すと、ブラウザがマイクの使用許可を求めます。</div>
-  </section>
 
-  <section class="panel">
-    <label>OBS ブラウザソースの URL</label>
-    <div class="row">
-      <code class="url" id="obs-url"></code>
-      <button class="secondary" id="copy">コピー</button>
-      <button class="secondary" id="open">プレビューを開く</button>
-    </div>
-    <div class="hint">OBS → ソース → ブラウザ → 上の URL を貼り付け。幅 1920 / 高さ 1080、背景は透明。</div>
-  </section>
+    <aside class="stack">
+      <section class="card">
+        <h2>OBS</h2>
+        <p class="hint">OBS → ソース → ブラウザ → 下の URL。幅 1920 / 高さ 1080、背景は透明。</p>
+        <code class="url" id="obs-url"></code>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="btn btn-secondary" id="copy" type="button">URL をコピー</button>
+          <button class="btn btn-secondary" id="open" type="button">プレビューを開く</button>
+        </div>
+      </section>
 
-  <details class="panel">
-    <summary>OBS 字幕の見た目を変える（AI 用プロンプト）</summary>
-    <p class="lead">OBS のブラウザソースには「カスタム CSS」欄があります。下のプロンプトを AI に渡すと、
-      この字幕ページの構造を踏まえた CSS が返ってくるので、そのまま貼り付ければ見た目を変えられます。</p>
-    <ol class="steps">
-      <li>ソース → ブラウザ → プロパティを開き、「カスタム CSS」欄を探します。</li>
-      <li>下のプロンプトをコピーし、最後の 1 行を自分の希望に書き換えて AI に渡します。</li>
-      <li>返ってきた CSS を貼り付けて「OK」。変化がないときは !important の抜けを確認してください。</li>
-    </ol>
-    <div class="prompt-head">
-      <span>プロンプト（コピーして最終行を自分の希望に変える）</span>
-      <button class="secondary" id="copy-prompt">コピー</button>
-    </div>
-    <pre class="prompt" id="css-prompt">あなたは LiveSub Local の OBS 字幕ページ用の CSS を書きます。
+      <details class="card">
+        <summary>OBS 字幕の見た目を変える（AI 用プロンプト）</summary>
+        <p class="hint">上のスタイルで足りないときは、このプロンプトを AI に渡して CSS を作り、
+          OBS の「カスタム CSS」欄に貼ります。</p>
+        <ol class="hint" style="margin:10px 0 14px 1.2em;padding:0">
+          <li>ソース → ブラウザ → プロパティ →「カスタム CSS」欄を開きます。</li>
+          <li>プロンプトをコピーし、最終行を自分の希望に書き換えて AI に渡します。</li>
+          <li>返ってきた CSS を貼り付けて「OK」。変化がないときは !important の抜けを確認。</li>
+        </ol>
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <span class="hint">プロンプト</span>
+          <button class="btn btn-secondary btn-sm" id="copy-prompt" type="button">コピー</button>
+        </div>
+        <pre class="prompt" id="css-prompt">あなたは LiveSub Local の OBS 字幕ページ用の CSS を書きます。
 
 【使える構造】
-#stage                     字幕ボックス（position:fixed 設定済み。変更しない）
-#stage.bottom / .top / .center  表示位置（クラスで切り替わる）
-.pair                      1 組の字幕（原文 + 訳文）
-.pair .source              原文（display:none で隠れる場合あり）
-.pair .target              訳文（1〜3 行）
-#stage.idle                無音で薄くなっている状態
+.sub-stage                  字幕ボックス（position:fixed 設定済み。変更しない）
+.sub-stage[data-position]   表示位置（bottom / top）
+.sub-pair                   1 組の字幕（原文 + 訳文）
+.sub-source                 原文（非表示の場合あり）
+.sub-target                 訳文（1〜3 行）
 
-【使える変数】--target-size --source-size --outline --fade --gap
+【使える変数】--target-size --source-size --target-color --source-color
+             --outline --outline-color --gap --pair-bg --sub-font
 
 【必須条件】
-1. すべてのセレクタは #stage で始める
-2. #stage 自身のプロパティは !important 必須（ページはインラインスタイルを使う）
-3. #stage:empty{...} のリセットを必ず入れる（無音時に空の枠が残るため）
+1. すべてのセレクタは .sub-stage で始める
+2. .sub-stage 自身のプロパティは !important 必須（ページはインラインスタイルを使う）
+3. .sub-stage:empty{...} のリセットを必ず入れる（無音時に空の枠が残るため）
 4. @import、url()、@font-face、:has() は禁止
 5. position / width / bottom は変更しない（位置は設定側で決まる）
 6. 合計 4KB 以内。CSS だけを出力し、説明は書かない
 
 【希望のデザイン】この行を自分の希望に置き換える</pre>
-    <p class="note">※ 非公式のカスタマイズです。ページ側の更新で CSS の調整が必要になる場合があります。
-      カスタム CSS 欄を空にすれば既定の見た目に戻ります。</p>
-  </details>
+        <p class="hint" style="margin-top:10px">※ 非公式のカスタマイズです。ページ更新で調整が必要になる場合があります。</p>
+      </details>
 
-  <details>
-    <summary>デバッグ：音声なしで 1 文だけ送る（翻訳経路の確認）</summary>
-    <div class="debug-row">
-      <input type="text" id="debug-text" placeholder="例：こんにちは、今日はいい天気ですね">
-      <button id="debug-send" class="secondary">送信</button>
-    </div>
-    <div class="hint">「確定した文」として送られ、実際の翻訳キューを通ります。先に「開始」を押してください。</div>
-  </details>
+      <details class="card">
+        <summary>デバッグ：音声なしで 1 文だけ送る</summary>
+        <div class="row" style="margin-top:4px">
+          <input type="text" id="debug-text" placeholder="例：こんにちは、今日はいい天気ですね">
+          <button class="btn btn-secondary" id="debug-send" type="button">送信</button>
+        </div>
+        <p class="hint" style="margin-top:10px">「確定した文」として送られ、実際の翻訳キューを通ります。先に「字幕を開始」を押してください。</p>
+      </details>
+    </aside>
+  </div>
 </main>
 
+<script src="/static/style.js"></script>
 <script>
 (function () {
   "use strict";
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  // この版は 日本語 → 中文 固定
-  var SOURCE_LANG = "ja", TARGET_LANG = "zh";
-  var BROWSER_LANG = "ja-JP";
-  var MAX_CHARS = 14;          // 1 文を最大何文字ためたら確定するか
-  var PAUSE_MS = 800;          // 無音が何 ms 続いたら 1 文とみなすか
-  var CAP_MS = 2500;           // 話し続けているときの最大待ち時間
+  var SOURCE_LANG = "ja", TARGET_LANG = "zh", BROWSER_LANG = "ja-JP";
+  var MAX_CHARS = 14, PAUSE_MS = 800, CAP_MS = 2500;
 
   var $ = function (id) { return document.getElementById(id); };
+  var display = null;
+  var saveTimer = null;
   var socket = null, rec = null, running = false;
   var seq = 0, draft = "", finalTimer = null, flushed = 0;
   var openId = 0, openText = "", phrase = -1, openAt = 0, heartbeat = null;
+  var meter = { stream: null, ctx: null, analyser: null, gainNode: null, raf: 0 };
 
+  /* ---------------- テーマ ---------------- */
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    Array.prototype.forEach.call(document.querySelectorAll("[data-theme-opt]"), function (btn) {
+      btn.setAttribute("aria-pressed", String(btn.getAttribute("data-theme-opt") === theme));
+    });
+    try { localStorage.setItem("livesub-theme", theme); } catch (err) {}
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-theme-opt]"), function (btn) {
+    btn.addEventListener("click", function () { applyTheme(btn.getAttribute("data-theme-opt")); });
+  });
+  (function () {
+    var saved = "auto";
+    try { saved = localStorage.getItem("livesub-theme") || "auto"; } catch (err) {}
+    applyTheme(saved);
+  })();
+
+  /* ---------------- 字幕スタイル ---------------- */
+  var NUMBER_FIELDS = ["target_size", "source_size", "outline_width", "background_alpha",
+                       "pairs", "margin_percent", "line_gap", "clear_after_ms"];
+
+  function formatValue(key, value) {
+    if (key === "clear_after_ms") return (value / 1000).toFixed(1) + " 秒";
+    if (key === "background_alpha") return value + "%";
+    if (key === "pairs") return value + " 文";
+    return String(value);
+  }
+
+  function fillForm(data) {
+    ["font_family", "target_color", "source_color", "outline_color", "background_color",
+     "position", "order"].forEach(function (key) {
+      if (data[key] !== undefined && $(key)) $(key).value = data[key];
+    });
+    NUMBER_FIELDS.forEach(function (key) {
+      if (data[key] !== undefined && $(key)) $(key).value = data[key];
+      var out = $(key + "-o");
+      if (out && $(key)) out.textContent = formatValue(key, Number($(key).value));
+    });
+    $("clear_after_ms").value = data.clear_after_ms !== undefined ? data.clear_after_ms : 5000;
+    $("clear_after_ms-o").textContent = formatValue("clear_after_ms", Number($("clear_after_ms").value));
+    $("show_source").value = data.show_source === false ? "false" : "true";
+    $("gain-o").textContent = Number($("gain").value).toFixed(1) + "×";
+  }
+
+  function readForm() {
+    var data = {
+      font_family: $("font_family").value,
+      target_color: $("target_color").value,
+      source_color: $("source_color").value,
+      outline_color: $("outline_color").value,
+      background_color: $("background_color").value,
+      position: $("position").value,
+      order: $("order").value,
+      show_source: $("show_source").value === "true"
+    };
+    NUMBER_FIELDS.forEach(function (key) { data[key] = Number($(key).value); });
+    return data;
+  }
+
+  function applyPreview() {
+    if (!display) return;
+    LiveSubStyle.apply($("preview"), display);
+  }
+
+  function queueSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      saveTimer = null;
+      fetch("/api/display", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(display)
+      }).then(function (response) {
+        if (!response.ok) throw new Error("save failed");
+        return response.json();
+      }).then(function (data) {
+        delete data.ok;
+        display = data;
+      }).catch(function () {
+        say("スタイルを保存できませんでした。", "error");
+      });
+    }, 260);
+  }
+
+  function onStyleInput() {
+    if (!display) return;
+    display = readForm();
+    NUMBER_FIELDS.forEach(function (key) {
+      var out = $(key + "-o");
+      if (out) out.textContent = formatValue(key, Number($(key).value));
+    });
+    applyPreview();
+    queueSave();
+  }
+
+  ["input", "change"].forEach(function (eventName) {
+    $("style-form").addEventListener(eventName, onStyleInput);
+  });
+
+  $("reset-style").onclick = function () {
+    fetch("/api/display/reset", { method: "POST" }).then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      delete data.ok;
+      display = data;
+      fillForm(display);
+      applyPreview();
+      say("スタイルを既定に戻しました。", "ok");
+    }).catch(function () {
+      say("既定に戻せませんでした。", "error");
+    });
+  };
+
+  /* ---------------- 翻訳エンジン（リージョン） ---------------- */
+  var engineInfo = null;
+
+  function regionLabel(code) {
+    return code === "intl" ? "海外（シンガポール）" : "中国本土（北京）";
+  }
+
+  function describeEngine(data) {
+    if (!data) return "—";
+    if (data.engine === "qwen") return "Qwen " + data.model + " / " + regionLabel(data.region);
+    return "mock（API キー未設定）";
+  }
+
+  function loadEngine() {
+    fetch("/api/engine").then(function (response) { return response.json(); }).then(function (data) {
+      engineInfo = data;
+      $("region").value = data.region || "cn";
+      $("engine-status").textContent = describeEngine(data);
+    }).catch(function () {});
+  }
+
+  $("region").addEventListener("change", function () {
+    var region = $("region").value;
+    $("region").disabled = true;
+    fetch("/api/engine", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ region: region })
+    }).then(function (response) {
+      if (response.status === 409) throw new Error("配信中は変更できません");
+      if (!response.ok) throw new Error("切り替えに失敗しました");
+      return response.json();
+    }).then(function (data) {
+      engineInfo = data;
+      $("engine-status").textContent = describeEngine(data);
+      say("リージョンを切り替えました：" + regionLabel(region), "ok");
+    }).catch(function (error) {
+      say(error.message, "error");
+      if (engineInfo) $("region").value = engineInfo.region;
+    }).finally(function () {
+      $("region").disabled = false;
+    });
+  });
+
+  $("test-engine").addEventListener("click", function () {
+    $("test-engine").disabled = true;
+    $("engine-status").textContent = "テスト中…";
+    fetch("/api/engine/test", { method: "POST" }).then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      if (data.ok) {
+        $("engine-status").textContent = "OK：" + (data.sample || "");
+        say("接続テストに成功しました（" + data.engine + "）。", "ok");
+      } else {
+        $("engine-status").textContent = "失敗：" + data.error;
+        say("接続テストに失敗しました：" + data.error, "error");
+      }
+    }).catch(function () {
+      $("engine-status").textContent = "失敗：通信エラー";
+    }).finally(function () {
+      $("test-engine").disabled = false;
+    });
+  });
+
+  /* ---------------- 状態表示 ---------------- */
   function say(text, kind) {
     var el = $("status");
     el.textContent = text;
-    el.className = kind || "";
+    el.className = "hint" + (kind ? " " + kind : "");
   }
 
+  /* ---------------- マイクレベル ---------------- */
+  function fillDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      var select = $("device");
+      var current = select.value;
+      select.replaceChildren(new Option("既定のマイク", ""));
+      devices.filter(function (device) { return device.kind === "audioinput"; })
+        .forEach(function (device, index) {
+          select.add(new Option(device.label || ("マイク " + (index + 1)), device.deviceId));
+        });
+      var exists = Array.prototype.some.call(select.options, function (option) {
+        return option.value === current;
+      });
+      if (exists) select.value = current;
+    }).catch(function () {});
+  }
+
+  function stopMeter() {
+    if (meter.raf) cancelAnimationFrame(meter.raf);
+    meter.raf = 0;
+    if (meter.stream) {
+      meter.stream.getTracks().forEach(function (track) { track.stop(); });
+      meter.stream = null;
+    }
+    if (meter.ctx) { meter.ctx.close().catch(function () {}); meter.ctx = null; }
+    meter.analyser = null;
+    meter.gainNode = null;
+    $("meter-fill").style.width = "0%";
+    $("mic-db").textContent = "マイク入力を待っています";
+    $("mic-check").textContent = "マイクを確認";
+  }
+
+  function drawMeter() {
+    if (!meter.analyser) return;
+    var data = new Float32Array(meter.analyser.fftSize);
+    meter.analyser.getFloatTimeDomainData(data);
+    var sum = 0;
+    for (var i = 0; i < data.length; i++) sum += data[i] * data[i];
+    var rms = Math.sqrt(sum / data.length);
+    var db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+    if (!isFinite(db)) db = -60;
+    db = Math.max(-60, Math.min(0, db));
+    var percent = ((db + 60) / 60) * 100;
+    $("meter-fill").style.width = percent.toFixed(1) + "%";
+    $("mic-db").textContent = (db <= -59.9 ? "-∞" : db.toFixed(1)) + " dBFS";
+    meter.raf = requestAnimationFrame(drawMeter);
+  }
+
+  function startMeter() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      say("このブラウザはマイク入力を取得できません。Chrome か Edge を使ってください。", "error");
+      return;
+    }
+    var deviceId = $("device").value;
+    var constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+    navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+      meter.stream = stream;
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      meter.ctx = new Ctx();
+      var source = meter.ctx.createMediaStreamSource(stream);
+      meter.gainNode = meter.ctx.createGain();
+      meter.gainNode.gain.value = Number($("gain").value);
+      meter.analyser = meter.ctx.createAnalyser();
+      meter.analyser.fftSize = 1024;
+      meter.analyser.smoothingTimeConstant = 0.6;
+      source.connect(meter.gainNode);
+      meter.gainNode.connect(meter.analyser);
+      $("mic-check").textContent = "確認を終了";
+      fillDevices();
+      drawMeter();
+    }).catch(function (error) {
+      say("マイクを使えませんでした：" + error.message, "error");
+    });
+  }
+
+  $("mic-check").onclick = function () {
+    if (meter.analyser) { stopMeter(); return; }
+    startMeter();
+  };
+
+  $("gain").addEventListener("input", function () {
+    $("gain-o").textContent = Number($("gain").value).toFixed(1) + "×";
+    if (meter.gainNode) meter.gainNode.gain.value = Number($("gain").value);
+    try { localStorage.setItem("livesub-gain", $("gain").value); } catch (err) {}
+  });
+
+  $("refresh-devices").onclick = function () {
+    fillDevices();
+    say("デバイス一覧を更新しました。", "ok");
+  };
+
+  /* ---------------- 音声認識（日本語固定） ---------------- */
   function send(payload) {
     if (socket && socket.readyState === 1) socket.send(JSON.stringify(payload));
   }
@@ -190,7 +574,6 @@
       return;
     }
     if (!interim) return;
-    // 文が切り替わった（resultIndex が変わった）：前の文を確定させないと訳が付かない。
     if (openId && event.resultIndex !== phrase) { flushDraft("switch"); flushed = 0; }
     phrase = event.resultIndex;
     var tail = interim.slice(flushed);
@@ -222,24 +605,24 @@
       var code = event.error;
       if (code === "no-speech" || code === "aborted") return;
       if (code === "not-allowed" || code === "service-not-allowed") {
-        say("マイクが拒否されました。アドレスバー左のマイク設定を許可してから再試行してください。", "error");
+        say("マイクが拒否されました。アドレスバー左の設定から許可してください。", "error");
         stop(true);
         return;
       }
       say("認識エラー：" + code, "error");
     };
     rec.onend = function () {
-      // 無音が続くと Chrome 側で終了する。動作中なら自動で再開する。
       if (!running) return;
       setTimeout(function () {
         if (!running || !rec) return;
-        try { rec.start(); } catch (err) { /* 起動中なら無視 */ }
+        try { rec.start(); } catch (err) {}
       }, 250);
     };
     running = true;
     rec.start();
     $("start").disabled = true;
     $("stop").disabled = false;
+    $("region").disabled = true;
     say("認識中です。話してください。", "ok");
   }
 
@@ -257,7 +640,9 @@
       beginRecognition();
       heartbeat = setInterval(function () { send({ type: "ping" }); }, 30000);
     };
-    socket.onerror = function () { say("ローカルサービスに接続できません。コンソール画面が開いているか確認してください。", "error"); };
+    socket.onerror = function () {
+      say("ローカルサービスに接続できません。コンソール画面が開いているか確認してください。", "error");
+    };
     socket.onclose = function () {
       if (!running) return;
       say("接続が切れました。", "error");
@@ -267,7 +652,7 @@
 
   function stop(silent) {
     if (!running && !socket && !rec) return;
-    if (running) flushDraft("stop");   // 最後の 1 文も翻訳に回す
+    if (running) flushDraft("stop");
     running = false;
     if (finalTimer) { clearTimeout(finalTimer); finalTimer = null; }
     if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
@@ -284,11 +669,14 @@
     }
     $("start").disabled = false;
     $("stop").disabled = true;
+    $("region").disabled = false;
     if (!silent) say("停止しました。");
   }
 
   $("start").onclick = start;
   $("stop").onclick = function () { stop(false); };
+
+  /* ---------------- OBS / その他 ---------------- */
   $("obs-url").textContent = location.origin + "/view";
   $("copy").onclick = function () {
     navigator.clipboard.writeText($("obs-url").textContent).then(function () {
@@ -303,28 +691,54 @@
       $("copy-prompt").textContent = "コピーしました";
       setTimeout(function () { $("copy-prompt").textContent = "コピー"; }, 1500);
     }, function () {
-      say("コピーできませんでした。プロンプトを手動で選択してください。", "error");
+      say("コピーできませんでした。手動で選択してください。", "error");
     });
   };
   $("debug-send").onclick = function () {
     var text = $("debug-text").value.trim();
     if (!text) return;
-    if (!socket || socket.readyState !== 1) { say("先に「開始」を押してサービスに接続してください。", "error"); return; }
+    if (!socket || socket.readyState !== 1) {
+      say("先に「字幕を開始」を押してください。", "error");
+      return;
+    }
     seq += 1;
     send({ id: seq, text: text, final: true, trigger: "debug" });
     $("debug-text").value = "";
     say("送信しました：" + text, "ok");
   };
 
-  fetch("/api/health").then(function (r) { return r.json(); }).then(function (data) {
-    $("engine-badge").textContent = data.engine === "qwen" ? "Qwen " + (data.model || "") : "mock モード";
+  /* ---------------- 起動 ---------------- */
+  fetch("/api/display").then(function (response) { return response.json(); }).then(function (data) {
+    delete data.ok;
+    display = data;
+    fillForm(display);
+    applyPreview();
+  }).catch(function () {
+    say("設定を読み込めませんでした。", "error");
+  });
+
+  fetch("/api/health").then(function (response) { return response.json(); }).then(function (data) {
+    var banner = $("banner");
     if (data.engine !== "qwen") {
-      var banner = $("banner");
-      banner.className = "banner warn";
-      banner.textContent = "Qwen の API Key が未設定です：いま表示されるのは mock のダミー訳文です。" +
+      banner.hidden = false;
+      banner.textContent = "Qwen の API Key が未設定です。いまは mock のダミー訳文が出ます。" +
         "api.toml の qwen.api_key を入れて、サービスを再起動してください。";
+    } else {
+      banner.hidden = true;
     }
   }).catch(function () {});
+
+  try {
+    var savedGain = localStorage.getItem("livesub-gain");
+    if (savedGain) $("gain").value = savedGain;
+    $("gain-o").textContent = Number($("gain").value).toFixed(1) + "×";
+  } catch (err) {}
+
+  fillDevices();
+  loadEngine();
+  if (navigator.mediaDevices) {
+    navigator.mediaDevices.addEventListener("devicechange", fillDevices);
+  }
 })();
 </script>
 </body>

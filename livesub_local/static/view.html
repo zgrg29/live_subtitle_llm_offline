@@ -1,112 +1,49 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
 <meta charset="utf-8">
 <title>LiveSub Local · 字幕</title>
+<link rel="stylesheet" href="/static/subtitle.css">
 <style>
-  :root {
-    --target-size: 44px;
-    --source-size: 26px;
-    --outline: 4px;
-    --fade: 160ms;
-    --gap: 14px;
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; height: 100%; background: transparent; overflow: hidden;
-    font-family: "Microsoft YaHei", "Noto Sans SC", "Yu Gothic UI", "Hiragino Sans", sans-serif;
-  }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
   #stage {
     position: fixed; left: 0; right: 0;
-    display: flex; flex-direction: column; align-items: center;
-    gap: var(--gap); padding: 0 8%;
-    opacity: 1; transition: opacity var(--fade) linear;
-    pointer-events: none;
+    padding: 0 var(--margin-x, 8%);
+    align-items: center;
+    transition: opacity var(--fade, 160ms) linear;
   }
-  #stage.bottom { bottom: 8%; }
-  #stage.top { top: 6%; }
-  #stage.center { top: 50%; transform: translateY(-50%); }
+  #stage[data-position="bottom"] { bottom: var(--margin-y, 8%); }
+  #stage[data-position="top"] { top: var(--margin-y, 8%); }
   #stage.idle { opacity: 0; }
-  .pair { text-align: center; line-height: 1.28; max-width: 100%; }
-  .pair:last-child { animation: rise var(--fade) ease-out; }
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: none; }
-  }
-  .source, .target {
-    white-space: pre-wrap; word-break: break-word;
-    -webkit-text-stroke: var(--outline) #000;
-    paint-order: stroke fill;
-  }
-  .source {
-    font-size: var(--source-size);
-    color: #b9c6d4;
-    font-weight: 500;
-    margin-bottom: 2px;
-  }
-  .target {
-    font-size: var(--target-size);
-    color: #ffffff;
-    font-weight: 700;
-    letter-spacing: .01em;
-  }
-  .source:only-child { margin-bottom: 0; }
-  .empty-hint { color: rgba(255,255,255,.35); font-size: 20px; }
 </style>
 </head>
 <body>
-<div id="stage" class="bottom"></div>
+<div id="stage" class="sub-stage" data-position="bottom"></div>
+<script src="/static/style.js"></script>
 <script>
 (function () {
   "use strict";
   var stage = document.getElementById("stage");
-  var settings = null;
+  var display = null;
+  var lastSnapshot = null;
   var lastKey = "";
   var reconnectTimer = null;
   var idleTimer = null;
 
-  function setVars(data) {
-    var root = document.documentElement.style;
-    root.setProperty("--target-size", data.target_size + "px");
-    root.setProperty("--source-size", data.source_size + "px");
-    root.setProperty("--outline", data.outline_width + "px");
-    root.setProperty("--fade", data.fade_ms + "ms");
-    stage.className = data.position || "bottom";
+  function applyDisplay(data) {
+    if (!data) return;
+    LiveSubStyle.apply(stage, data);
+    var margin = LiveSubStyle.clamp(data.margin_percent, 0, 45, 8);
+    stage.style.setProperty("--margin-x", margin + "%");
+    stage.style.setProperty("--margin-y", margin + "%");
   }
 
   function armIdle() {
-    if (!settings) return;
+    if (!display) return;
     if (idleTimer) clearTimeout(idleTimer);
-    if (!settings.clear_after_ms) { stage.classList.remove("idle"); return; }
+    if (!display.clear_after_ms) { stage.classList.remove("idle"); return; }
     stage.classList.remove("idle");
-    idleTimer = setTimeout(function () { stage.classList.add("idle"); }, settings.clear_after_ms);
-  }
-
-  function render(snapshot) {
-    if (!settings) return;
-    var sentences = (snapshot.sentences || []).slice(-settings.pairs);
-    var key = sentences.map(function (s) {
-      return s.id + "|" + s.source + "|" + JSON.stringify(s.translations || {});
-    }).join("~");
-    if (key === lastKey) return;
-    lastKey = key;
-
-    var html = "";
-    sentences.forEach(function (sentence) {
-      var targets = (snapshot.targets || []).map(function (t) { return sentence.translations[t]; })
-        .filter(function (t) { return t; });
-      var target = targets.length ? targets[0] : "";
-      if (!sentence.source && !target) return;
-      html += '<div class="pair">';
-      if (settings.show_source && sentence.source) {
-        html += '<div class="source">' + escapeHtml(sentence.source) + "</div>";
-      }
-      if (target) html += '<div class="target">' + escapeHtml(target) + "</div>";
-      html += "</div>";
-    });
-
-    stage.innerHTML = html;
-    if (html) armIdle(); else stage.classList.add("idle");
+    idleTimer = setTimeout(function () { stage.classList.add("idle"); }, display.clear_after_ms);
   }
 
   function escapeHtml(text) {
@@ -115,14 +52,57 @@
     });
   }
 
+  function render(snapshot, force) {
+    if (!display) return;
+    var sentences = (snapshot.sentences || []).slice(-display.pairs);
+    if (display.order === "top") sentences = sentences.slice().reverse();
+    var key = sentences.map(function (item) {
+      return item.id + "|" + item.source + "|" + JSON.stringify(item.translations || {});
+    }).join("~") + "|" + display.order + "|" + display.show_source;
+    if (!force && key === lastKey) return;
+    lastKey = key;
+
+    var html = "";
+    sentences.forEach(function (sentence) {
+      var target = "";
+      (snapshot.targets || []).some(function (language) {
+        target = sentence.translations[language] || "";
+        return Boolean(target);
+      });
+      if (!sentence.source && !target) return;
+      html += '<div class="sub-pair">';
+      if (display.show_source && sentence.source) {
+        html += '<div class="sub-source">' + escapeHtml(sentence.source) + "</div>";
+      }
+      if (target) html += '<div class="sub-target">' + escapeHtml(target) + "</div>";
+      html += "</div>";
+    });
+
+    stage.innerHTML = html;
+    if (html) armIdle(); else stage.classList.add("idle");
+  }
+
   function connect() {
     var scheme = location.protocol === "https:" ? "wss" : "ws";
     var socket = new WebSocket(scheme + "://" + location.host + "/v1/view");
     socket.onmessage = function (event) {
       var payload;
       try { payload = JSON.parse(event.data); } catch (err) { return; }
-      if (payload.type === "snapshot") { render(payload); return; }
-      if (payload.type === "idle") { lastKey = ""; stage.innerHTML = ""; stage.classList.add("idle"); }
+      if (payload.display) {
+        display = payload.display;
+        applyDisplay(display);
+      }
+      if (payload.type === "snapshot") {
+        lastSnapshot = payload;
+        render(payload, true);
+        return;
+      }
+      if (payload.type === "idle") {
+        lastSnapshot = null;
+        lastKey = "";
+        stage.innerHTML = "";
+        stage.classList.add("idle");
+      }
     };
     socket.onclose = function () {
       if (reconnectTimer) return;
@@ -130,12 +110,11 @@
     };
   }
 
-  fetch("/api/display").then(function (r) { return r.json(); }).then(function (data) {
-    settings = data;
-    setVars(data);
+  fetch("/api/display").then(function (response) { return response.json(); }).then(function (data) {
+    display = data;
+    applyDisplay(display);
     connect();
   }).catch(function () {
-    // 服务没起来：1 秒后重试整个初始化
     setTimeout(function () { location.reload(); }, 1500);
   });
 })();

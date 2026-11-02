@@ -63,8 +63,14 @@ class ConfigTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_config(path=self.config, api_path=self.api)
 
-    def test_display_pairs_are_bounded(self):
+    def test_display_pairs_are_clamped(self):
+        # 越界值不报错，夹到允许区间（2–6）
         self.config.write_text("[display]\npairs = 9\n", encoding="utf-8")
+        loaded = load_config(path=self.config, api_path=self.api)
+        self.assertEqual(loaded.display.pairs, 6)
+
+    def test_display_bad_position_rejected(self):
+        self.config.write_text('[display]\nposition = "middle"\n', encoding="utf-8")
         with self.assertRaises(ValueError):
             load_config(path=self.config, api_path=self.api)
 
@@ -73,6 +79,31 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(loaded.display.pairs, 3)
         self.assertEqual(loaded.subtitle.source_language, "ja")
         self.assertEqual(loaded.subtitle.target_languages, ("zh",))
+
+    def test_region_selects_endpoint(self):
+        self.api.write_text('[qwen]\napi_key = "sk-x"\nregion = "intl"\n', encoding="utf-8")
+        loaded = load_config(path=self.config, api_path=self.api)
+        self.assertEqual(loaded.qwen.region, "intl")
+        self.assertTrue(loaded.qwen.resolved_endpoint().startswith("https://dashscope-intl."))
+
+    def test_unknown_region_rejected(self):
+        self.api.write_text('[qwen]\nregion = "us"\n', encoding="utf-8")
+        with self.assertRaises(ValueError):
+            load_config(path=self.config, api_path=self.api)
+
+    def test_legacy_endpoint_falls_back_to_region(self):
+        self.api.write_text(
+            '[qwen]\nendpoint = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"\n',
+            encoding="utf-8",
+        )
+        loaded = load_config(path=self.config, api_path=self.api)
+        self.assertEqual(loaded.qwen.region, "intl")
+        self.assertEqual(loaded.qwen.endpoint, "")
+
+    def test_with_region_switches_endpoint(self):
+        loaded = load_config(path=self.config, api_path=self.api)
+        switched = loaded.qwen.with_region("intl")
+        self.assertIn("dashscope-intl", switched.resolved_endpoint())
 
 
 if __name__ == "__main__":

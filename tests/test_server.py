@@ -1,8 +1,12 @@
 """HTTP / WebSocket 路由的离线测试（注入假翻译器，不需要网络）。"""
 from __future__ import annotations
 
+import json
+import shutil
 import time
 import unittest
+import uuid
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -39,8 +43,21 @@ def wait_for(predicate, timeout: float = 3.0) -> None:
 
 
 class ServerTest(unittest.TestCase):
+    def setUp(self):
+        self.work = Path(__file__).resolve().parent / "_work" / uuid.uuid4().hex
+        self.work.mkdir(parents=True)
+        self.settings = self.work / "settings.json"
+
+    def tearDown(self):
+        shutil.rmtree(self.work, ignore_errors=True)
+
     def make_client(self, translator=None) -> TestClient:
-        app = create_app(Config(), translator=translator or FakeTranslator(), engine="mock")
+        app = create_app(
+            Config(),
+            translator=translator or FakeTranslator(),
+            engine="mock",
+            settings_path=self.settings,
+        )
         return TestClient(app)
 
     def test_pages_and_health(self):
@@ -91,6 +108,83 @@ class ServerTest(unittest.TestCase):
             with client.websocket_connect("/v1/view") as socket:
                 first = socket.receive_json()
                 self.assertIn(first["type"], ("idle", "snapshot"))
+                self.assertIn("display", first)
+                self.assertEqual(first["display"]["target_size"], 44)
+
+    def test_display_update_is_clamped_and_persisted(self):
+        client = self.make_client()
+        with client:
+            response = client.post(
+                "/api/display",
+                json={"target_size": 88, "position": "top", "pairs": 9, "order": "top"},
+            )
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data["target_size"], 88)
+            self.assertEqual(data["pairs"], 6)          # 夹到上限
+            self.assertEqual(data["position"], "top")
+
+            saved = json.loads(self.settings.read_text(encoding="utf-8"))
+            self.assertEqual(saved["display"]["target_size"], 88)
+
+            with client.websocket_connect("/v1/view") as socket:
+                first = socket.receive_json()
+                self.assertEqual(first["display"]["target_size"], 88)
+
+            reset = client.post("/api/display/reset").json()
+            self.assertEqual(reset["target_size"], 44)
+
+    def test_display_rejects_unknown_or_invalid(self):
+        client = self.make_client()
+        with client:
+            self.assertEqual(client.post("/api/display", json={"nope": 1}).status_code, 400)
+            self.assertEqual(client.post("/api/display", json={"target_size": "big"}).status_code, 400)
+            self.assertEqual(client.post("/api/display", json={"target_color": "red"}).status_code, 400)
+
+    def test_engine_info_and_region_switch(self):
+        client = self.make_client()
+        with client:
+            info = client.get("/api/engine").json()
+            self.assertEqual(info["engine"], "mock")
+            self.assertEqual(info["region"], "cn")
+            self.assertIn("dashscope.aliyuncs.com", info["endpoint"])
+
+            response = client.post("/api/engine", json={"region": "intl"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["region"], "intl")
+            self.assertIn("dashscope-intl", response.json()["endpoint"])
+
+            saved = json.loads(self.settings.read_text(encoding="utf-8"))
+            self.assertEqual(saved["region"], "intl")
+
+            self.assertEqual(client.post("/api/engine", json={"region": "us"}).status_code, 400)
+
+    def test_engine_test_endpoint(self):
+        client = self.make_client()
+        with client:
+            result = client.post("/api/engine/test").json()
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["engine"], "mock")
+            self.assertIn("こんにちは", result["sample"])
+
+    def test_region_switch_blocked_while_streaming(self):
+        client = self.make_client()
+        with client:
+            with client.websocket_connect("/v1/text?source=ja&targets=zh") as socket:
+                socket.receive_json()
+                response = client.post("/api/engine", json={"region": "intl"})
+                self.assertEqual(response.status_code, 409)
+
+    def test_display_from_settings_file_wins(self):
+        self.settings.write_text(
+            json.dumps({"display": {"target_size": 70, "show_source": False}}),
+            encoding="utf-8",
+        )
+        client = self.make_client()
+        with client:
+            display = client.get("/api/display").json()
+            self.assertEqual(display["target_size"], 70)
+            self.assertFalse(display["show_source"])
 
     def test_translate_failure_does_not_break_session(self):
         client = self.make_client(FailingTranslator())

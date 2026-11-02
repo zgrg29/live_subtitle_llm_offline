@@ -43,12 +43,15 @@
 
 | 文件 | 职责 |
 |---|---|
-| `livesub_local/config.py` | 读 `config.toml`、环境变量覆盖、校验取值范围 |
+| `livesub_local/config.py` | 读 `config.toml` + `api.toml`、环境变量覆盖、校验取值范围、区域→端点映射 |
 | `livesub_local/mt.py` | 千问 MT 适配器（httpx）与 `mock` 适配器；统一错误码 |
-| `livesub_local/hub.py` | `Sentence` / `Session` / `Hub`：字幕状态、翻译队列、viewer 订阅与广播 |
-| `livesub_local/server.py` | FastAPI 路由、两个 WebSocket、静态页 |
-| `livesub_local/static/studio.html` | 控制页 + Web Speech 识别 + 切句 |
+| `livesub_local/hub.py` | `Sentence` / `Session` / `Hub`：字幕状态、翻译队列、viewer 订阅与广播、样式下发 |
+| `livesub_local/server.py` | FastAPI 路由、两个 WebSocket、静态页、settings.json、区域切换、自动开浏览器 |
+| `livesub_local/static/studio.html` | 控制台（日语，Apple 风格）：识别、电平表、样式面板、区域切换 |
 | `livesub_local/static/view.html` | OBS 显示页 + 渲染逻辑 |
+| `livesub_local/static/ui.css` | 从参考项目精简的 Apple 设计系统（明/暗/跟随系统） |
+| `livesub_local/static/subtitle.css` | 字幕本体样式，控制台预览与 `/view` 共用 |
+| `livesub_local/static/style.js` | 把 `display` 设置写成 CSS 变量（两边共用） |
 | `run.py` / `start.bat` | 启动入口（检查端口、开浏览器） |
 | `tests/` | 无网络的离线测试（mock 翻译） |
 
@@ -78,14 +81,19 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/` | 302 → `/studio` |
-| GET | `/studio` | 控制页 |
+| GET | `/studio` | 控制台（日语 / Apple 风格） |
 | GET | `/view` | OBS 显示页 |
-| GET | `/api/health` | `{ok, engine, session}`，用于启动自检 |
-| GET | `/api/display` | 显示参数（pairs/字号/位置…）给 view 页 |
-| WS | `/v1/text?source=ja&targets=zh,en` | studio 上行：`{type:"ping"}` 或 `{id,text,final}` |
-| WS | `/v1/view` | 下行：`{"type":"snapshot", ...}` |
+| GET | `/api/health` | `{ok, engine, region, session, stats}`，启动自检用 |
+| GET | `/api/engine` | 当前区域、端点、模型、是否有 Key |
+| POST | `/api/engine` | `{"region": "cn"\|"intl"}` 切换区域；配信中返回 409 |
+| POST | `/api/engine/test` | 用当前引擎翻 1 句，验证 Key/网络 |
+| GET | `/api/display` | 当前字幕样式（控制台初始化用） |
+| POST | `/api/display` | 合并并校验样式，推给所有 viewer，写 `settings.json` |
+| POST | `/api/display/reset` | 恢复 `config.toml [display]` 的默认值 |
+| WS | `/v1/text?source=ja&targets=zh` | studio 上行：`{type:"ping"}` 或 `{id,text,final}` |
+| WS | `/v1/view` | 下行：`{"type":"snapshot"\|"idle", "display": {...}, ...}` |
 
-快照形状：
+快照形状（`display` 随每条消息下发，所以改样式不需要刷新 OBS）：
 
 ```json
 {
@@ -94,23 +102,26 @@
   "sentences": [
     {"id": "1", "source": "こんにちは", "final": true,
      "translations": {"zh": "你好"}, "errors": {}}
-  ]
+  ],
+  "display": {"target_size": 44, "position": "bottom", "...": "..."}
 }
 ```
-
-`/api/display` 只在页面加载时取一次：改了 `config.toml` 的显示参数，需要刷新 `/view`
-（OBS 里右键 → 刷新）。参考项目是把样式随每条快照下发，所以能自动生效；本版为了简单先不做，
-M2 再补「保存即生效」。
 
 ## 7. 配置来源
 
 | 文件 | 内容 | 是否入库 |
 |---|---|---|
-| `config.toml` | 端口、语言、字幕条数、字号、位置 | 否（模板 `config.example.toml`） |
-| `api.toml` | 千问 API Key、endpoint、model、超时 | 否（模板 `api.example.toml`） |
+| `config.toml` | 端口、语言、字幕样式的初始值 | 否（模板 `config.example.toml`） |
+| `api.toml` | 千问 API Key、region、model、超时 | 否（模板 `api.example.toml`） |
+| `settings.json` | 控制台改过的样式 + 选择的区域 | 否（运行时生成） |
 
-`config.py` 启动时同时读这两个文件；环境变量 `LIVESUB_LOCAL_CONFIG` / `LIVESUB_LOCAL_API`
-可以改路径，`QWEN_API_KEY` 可以覆盖 Key（测试用）。文件写 UTF-8 BOM 也能读（去掉 BOM 再解析）。
+优先级：`settings.json` > `config.toml`/`api.toml` > 代码默认值。
+
+`config.py` 启动时读 toml；环境变量 `LIVESUB_LOCAL_CONFIG` / `LIVESUB_LOCAL_API` 可改路径，
+`QWEN_API_KEY` 可覆盖 Key（测试用）。文件带 UTF-8 BOM 也能读（先去掉 BOM）。
+
+区域与端点是固定映射（`config.QWEN_ENDPOINTS`）：`cn` → dashscope.aliyuncs.com，
+`intl` → dashscope-intl.aliyuncs.com。`[qwen].endpoint` 只在专用部署时显式覆盖。
 
 ## 8. 安全边界
 
@@ -133,10 +144,16 @@ PyInstaller 运行时会把内置文件解压到 `--runtime-tmpdir` 指定的位
 
 ## 10. 界面语言与翻译方向
 
-- `/studio` 与 `/view` 的界面文案是**日语**（面向日本主播），不做语言切换。
+- `/studio` 与 `/view` 的界面文案、`README.md`、`config.example.toml`、`api.example.toml`、
+  三个 `.bat`、启动时的终端输出，全部是**日语**（面向日本主播），不做语言切换。
+  `docs/` 下的工程记录仍是中文（给维护者看）。
+- 控制台视觉沿用参考项目的 Apple 风格（`static/ui.css`，明/暗/跟随系统）。
 - 翻译方向固定 **ja → zh**：`studio.html` 里的 `SOURCE_LANG` / `TARGET_LANG` 两个常量。
   `config.toml` 的 `[subtitle].source_language/target_languages` 只是服务端默认值。
+- 千问区域在控制台的「翻訳エンジン」卡片里选：`cn`（北京）/ `intl`（新加坡），
+  见 `QWEN_ENDPOINTS`；配信中切换会被拒绝（409）。
 - 控制台底部的「OBS 字幕の見た目を変える」提示词描述的是本页真实 DOM
-  （`#stage` / `.pair` / `.source` / `.target`）与 CSS 变量
-  （`--target-size` / `--source-size` / `--outline` / `--fade` / `--gap`）；
-  **改这几个类名或变量名时，必须同步改提示词**。
+  （`.sub-stage` / `.sub-pair` / `.sub-source` / `.sub-target`）与 CSS 变量
+  （`--target-size` / `--source-size` / `--target-color` / `--outline` / `--pair-bg` /
+  `--gap` / `--sub-font` 等）；
+  **改这几个类名或变量名时，必须同步改 `studio.html` 里的提示词**。

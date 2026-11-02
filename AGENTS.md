@@ -57,7 +57,9 @@ Chrome 里说话 → 浏览器内置 Web Speech 识别成文字 → 本机小服
 - **只监听 127.0.0.1**，不对外开端口，不做鉴权（本机单人使用）。
 - **密钥只放 `api.toml`**（已在 `.gitignore`；模板是 `api.example.toml`），不写进源码、不贴进聊天、不提交。
 - **不引入**：数据库、账号体系、支付、额度、管理后台、邮件、Docker、云部署。
-- 文档用中文；代码注释与文件内已有风格保持一致。
+- 文档用中文；但**用户可见的部分一律日语**：`README.md`、`config.example.toml`、
+  `api.example.toml`、三个 `.bat`、控制台与 `/view` 的界面文案、启动时的终端输出
+  （见 [docs/DECISIONS.md](docs/DECISIONS.md) D-014）。代码注释与文件内已有风格保持一致。
 - 改动后至少跑一遍 `python -m pytest -q`（或 `python -m unittest discover -s tests`），
   并在 PROGRESS 里贴结果。
 
@@ -76,7 +78,7 @@ livesub_local/            源码
   mt.py                   千问 MT 适配器 + mock
   hub.py                  会话、字幕状态、翻译队列、viewer 广播
   server.py               FastAPI 路由与 WebSocket
-  static/                 页面（无构建步骤）
+  static/                 页面（无构建步骤：studio / view / ui.css / subtitle.css / style.js）
 tests/                    离线测试
 docs/
   PROJECT-PLAN.md         全项目里程碑规划

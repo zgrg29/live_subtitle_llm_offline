@@ -1,89 +1,105 @@
 # LiveSub Local
 
-在自己电脑上跑的实时字幕：对着麦克风说日语，浏览器和 OBS 里立刻出现「日语原文 + 中文译文」。
+マイクに向かって日本語で話すと、Chrome がブラウザ内で音声を認識し、このローカルアプリが
+確定した文ごとに Qwen で中国語へ翻訳して、OBS に貼れる字幕ページに表示します。
 
-- 语音识别用 **Chrome / Edge 自带的 Web Speech**（音频不出本机，只有文字发给千问）
-- 翻译用 **千问 `qwen-mt-flash`**，每句只翻一次，方向固定 **日本語 → 中文**
-- 没有账号、登录、支付、额度、数据库、后台、服务器 —— 只监听 `127.0.0.1`
-- 控制台界面是**日语**（面向日本主播），提示词与文案都按日语写
+アカウントも決済もデータベースもサーバーもありません。Chrome と Qwen の API キー、
+そして exe ひとつだけです。
 
-> 「本地」指的是**不需要服务器**，不是完全离线：识别依赖 Chrome 自带的在线服务，翻译依赖千问 API。
+## これは何か
 
-## 需要什么
+- **認識はブラウザ内で完結。** Chrome 内蔵の Web Speech API がテキスト化します。音声は
+  外部に送られず、認識したテキストだけが翻訳 API に送られます。
+- **確定した文を 1 回だけ翻訳**（`qwen-mt-flash`）。日本語 → 中国語。
+- **字幕はリアルタイム更新**：`http://127.0.0.1:8765/view`（OBS のブラウザソース用）。
+- **完全ローカル。** `127.0.0.1` のみで待ち受け、外部にポートを公開しません。
 
-1. Windows 电脑
-2. Chrome 或 Edge（Firefox / Safari 不支持语音识别）
-3. 一个千问 API Key：[阿里云百炼控制台](https://bailian.console.aliyun.com/) → API-KEY
+> 「ローカル」はサーバー不要という意味です。完全オフラインではありません。音声認識は
+> Chrome のオンラインサービス、翻訳は Qwen API を使うため、インターネット接続が必要です。
 
-## 方式 A：直接用 exe（推荐）
+## 必要なもの
 
-`dist\LiveSubLocal.exe` 是打包好的单文件程序，不用装 Python。
+1. Windows 10/11
+2. Chrome または Edge（Firefox / Safari は Web Speech API 非対応）
+3. Qwen の API キー — [アリババクラウド百錬](https://bailian.console.aliyun.com/) → API-KEY
 
-1. 把 `LiveSubLocal.exe` 拷到任意文件夹（例如 `D:\LiveSub\`），双击运行
-2. 第一次运行会在 exe 旁边生成 `config.toml` 和 `api.toml`
-3. 用记事本打开 `api.toml`，把 `qwen.api_key` 填成自己的 Key，保存
-4. 关掉黑色窗口，再双击一次 `LiveSubLocal.exe`
-5. 浏览器会自动打开 `http://127.0.0.1:8765/studio`，点「開始」开始说话
+## クイックスタート（exe）
 
-OBS → 来源 → **浏览器** → 地址填 `http://127.0.0.1:8765/view`，宽 1920 高 1080，背景透明。
+1. `LiveSubLocal.exe` を書き込み可能なフォルダ（例：`D:\LiveSub\`）にコピーしてダブルクリック。
+2. 初回起動時に、exe と同じ場所に `config.toml` と `api.toml` が作られます。
+3. `api.toml` をメモ帳で開き、`qwen.api_key` に自分のキーを入れて保存します。
+4. コンソール画面を閉じ、もう一度 exe を起動します。ブラウザが自動でスタジオを開きます。
+5. スタジオで **字幕を開始** を押し、マイクの使用を許可します。
 
-> 单文件 exe 启动时会把运行时解压到**自己所在的文件夹**（`_MEIxxxx`），退出时自动删除。
-> 所以 exe 要放在一个可写的文件夹里，不要放在 `C:\Program Files`。
+OBS → ソース → **ブラウザ** → URL に `http://127.0.0.1:8765/view`、幅 1920、高さ 1080、
+背景は透明。
 
-## 方式 B：从源码运行（改代码时用）
+> 単一ファイル exe は、自分があるフォルダに実行環境を展開します（`_MEIxxxx`、終了時に削除）。
+> そのため書き込み可能な場所に置いてください（`C:\Program Files` は不可）。
 
-需要 Python 3.11+（安装时勾选 “Add python.exe to PATH”）。
+## クイックスタート（ソースから）
+
+Python 3.11 以降が必要です（インストール時に "Add python.exe to PATH" を有効に）。
 
 ```bat
-:: 第一次：安装依赖
 install.bat
-:: 启动
 start.bat
 ```
 
-`start.bat` 会自动打开浏览器；改代码后重启它即可。
+`install.bat` は初回だけ実行します。`start.bat` は `.venv` の Python でアプリを起動し、
+ブラウザを開きます。
 
-## 打包 exe
+## 設定ファイル
 
-```bat
-build_exe.bat
-```
-
-产物在 `dist\LiveSubLocal.exe`（约 16 MB）。打包脚本已经带上 `--runtime-tmpdir .`，
-避免少数机器上系统 Temp 被安全软件锁住导致启动失败。
-
-## 配置文件
-
-| 文件 | 内容 | 会提交到 git 吗 |
+| ファイル | 内容 | git にコミットされるか |
 |---|---|---|
-| `api.toml` | **千问 API Key**、endpoint、model | ❌ 不会（已在 `.gitignore`） |
-| `api.example.toml` | 上面这个文件的模板，`api_key` 为空 | ✅ 会 |
-| `config.toml` | 端口、字幕条数、字号、位置 | ❌ 不会 |
-| `config.example.toml` | 上面这个文件的模板 | ✅ 会 |
+| `api.toml` | **Qwen の API キー**、エンドポイント、モデル | されない（gitignore 済み） |
+| `api.example.toml` | キーが空の雛形 | される |
+| `config.toml` | ポート、言語ペア、スタイルの初期値 | されない |
+| `config.example.toml` | 雛形 | される |
+| `settings.json` | スタジオで変更したスタイル | されない |
 
-`api.toml` 里的 Key 不要截图、不要发到聊天或群里、不要上传网盘。
+スタジオで変えたスタイルは `settings.json` に保存され、`config.toml` より優先されます。
+元に戻すにはファイルを削除するか、スタジオの **既定に戻す** を押します。
 
-## 目录
+`api.toml` はコミットしない・スクリーンショットに撮らない・チャットやグループに貼らないでください。
 
-```
-LiveSubLocal.exe            打包产物（dist/ 里，不入库）
-build_exe.bat               打包脚本
-start.bat / install.bat     源码方式启动 / 安装依赖
-run.py                      启动入口
-config.example.toml         界面/字幕配置模板
-api.example.toml            千问 API 配置模板
-livesub_local/
-  config.py                 读配置、校验（支持 exe 模式）
-  mt.py                     千问翻译 + mock
-  hub.py                    字幕状态、翻译队列、广播
-  server.py                 HTTP / WebSocket
-  static/studio.html        控制台（日语界面，语音识别在这里）
-  static/view.html          OBS 显示页
-tests/                      离线测试（不联网、不用浏览器）
-docs/                       规划、进度、下一场提示词、架构、决策
-```
+## スタジオの機能
 
-## 开发
+- **音声と配信** — マイク選択、入力ゲイン、入力レベルメーター（dBFS）、開始 / 停止。
+  ゲインはメーターの表示倍率で、認識自体は Chrome 内で行われます。
+- **字幕スタイル** — フォント、原文 / 訳文のサイズと色、縁取り、背景色と不透明度、位置（上 / 下）、
+  表示する文数（2〜6）、並び順、端からの距離、行間、自動で消えるまでの時間。
+  変更は OBS を再読み込みせずに `/view` へ即時反映されます。
+- **OBS** — ブラウザソース用 URL とコピーボタン。
+- **翻訳エンジン** — Qwen のリージョンを **中国本土（北京）** と **海外（シンガポール）** から選べます。
+  海外アカウントの API キーは「海外」を選んでください。「接続テスト」でキーと通信を確認できます。
+  配信中は切り替えできません（先に停止してください）。
+- **カスタム CSS 用プロンプト** — AI に渡す日本語のプロンプト。実際の DOM
+  （`.sub-stage` / `.sub-pair` / `.sub-source` / `.sub-target`）と CSS 変数を説明するので、
+  返ってきた CSS をそのまま OBS の「カスタム CSS」欄に貼れます。
+
+## うまくいかないとき
+
+**ブラウザが開かない。** もう一度 exe を起動してください。ローカルサーバーが応答してから
+`http://127.0.0.1:8765/studio` を開きます。開かない場合は手動でアクセスしてください。
+
+**コンソールの文字が化ける。** 起動時に UTF-8 に切り替えています。Windows のコンソール
+フォントが日本語を表示できない場合は、MS Gothic か Consolas に変更してください。
+
+**訳文が `［mock·zh］…` になる。** API キーが読めていません。`api.toml` に入力して再起動してください。
+
+**ポートが使用中。** `config.toml` の `[server].port` を 8790 などに変更してください。
+
+**Chrome / Edge だけ？** はい。`webkitSpeechRecognition` が必要です。
+
+## 制限
+
+- 同時に使えるスタジオは 1 つ。字幕の履歴保存や書き出しは未対応。
+- 翻訳方向は 日本語 → 中国語 固定。
+- 標準の字幕テーマは 1 種類。細かい見た目は OBS のカスタム CSS で。
+
+## 開発
 
 ```powershell
 python -m venv .venv
@@ -91,35 +107,9 @@ python -m venv .venv
 .venv\Scripts\python -m unittest discover -s tests -v
 ```
 
-强制用假翻译跑通界面（不需要 Key）：把 `config.toml` 里 `[subtitle].engine` 设成 `"mock"`。
-mock 模式的译文长这样：`［mock·zh］原文`，一眼能看出不是真翻译。
+exe のビルドは `build_exe.bat`（PyInstaller）。詳しい構成は
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照してください（開発メモは中国語です）。
 
-## 控制台里的自定义 CSS 提示词
-
-控制台最下面有一栏「OBS 字幕の見た目を変える（AI 用プロンプト）」：把里面的提示词粘给 AI，
-它会按本页的 DOM 结构返回一段 CSS，再粘进 OBS 浏览器源的「自定义 CSS」栏，就能改字幕外观。
-提示词是日语写的，和界面语言一致。
-
-## 常见问题
-
-**只支持 Chrome / Edge？** 是。识别用的是 `webkitSpeechRecognition`，Firefox/Safari 没有。
-
-**没有字幕出来？** 看控制台的状态行：没连上服务、麦克风被拒、识别出错都会写在那里；
-再确认黑色窗口没有关掉。
-
-**字幕是 `［mock·zh］…`？** 说明没读到 `api.toml` 里的 Key，或者 Key 为空。填好 Key 后重启程序。
-
-**端口被占用？** 改 `config.toml` 里的 `[server].port`，比如 8790。
-
-**OBS 里是白底/黑底？** OBS 浏览器源默认背景透明；如果用了自定义 CSS，把 body 背景设成透明。
-
-## 已知限制
-
-- 单机单人：同一时间只有一个控制台会话
-- 翻译方向固定 日本語 → 中文
-- 没有字幕历史、没有导出（M5 可加）
-- 主题只有一套默认样式（M2 再扩）
-
-## 许可
+## ライセンス
 
 MIT

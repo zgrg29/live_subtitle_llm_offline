@@ -1,46 +1,62 @@
-# LiveSub Local 配置文件
+# LiveSub Local 設定ファイル
 #
-# 用法：把本文件复制为 config.toml，然后双击 start.bat。
+# 使い方：このファイルを config.toml にコピーしてから start.bat を実行します。
 #   copy config.example.toml config.toml
 #
-# 注意：API Key 不在这个文件里，在 api.toml（模板见 api.example.toml）。
-# config.toml 已写进 .gitignore，不会被提交。
+# ※ API キーはこのファイルではなく api.toml に書きます（雛形は api.example.toml）。
+# config.toml は .gitignore 済みなのでコミットされません。
 
 [server]
-# 只监听本机。不要改成 0.0.0.0（那会把服务暴露到局域网）。
+# 127.0.0.1 のみで待ち受けます。0.0.0.0 には変えないでください（LAN に公開されます）。
 host = "127.0.0.1"
-# 浏览器和 OBS 都访问这个端口
+# ブラウザと OBS がアクセスするポート
 port = 8765
-# 启动后自动打开浏览器
+# 起動したらブラウザを自動で開く
 open_browser = true
 
 [subtitle]
-# 【本版固定】控制台只做「日语 → 中文」，下面两项只是服务端默认值，正常不用改。
-# 识别语言 ja=日语 zh=中文 en=英语 ko=韩语
+# 【この版では固定】コントロールパネルは「日本語 → 中国語」専用です。
+# 以下 2 行はサーバー側の初期値で、通常は変更不要です。
+# 認識言語：ja=日本語 zh=中国語 en=英語 ko=韓国語
 source_language = "ja"
-# 译文语言，可以写多个：target_languages = ["zh", "en"]
+# 訳文の言語（複数可：target_languages = ["zh", "en"]）
 target_languages = ["zh"]
-# 最多保留多少句（超出后丢最旧的），防止长时间直播内存增长
+# 保持する文数（超えたら古い文から捨てる）
 max_sentences = 100
-# 两次翻译请求之间的最小间隔（毫秒），防止触发限流
+# 翻訳リクエスト間の最小間隔（ミリ秒）。レート制限対策
 min_interval_ms = 120
-# auto = 有 key 用千问，没 key 用 mock；qwen = 强制千问；mock = 强制假翻译（联调用）
+# auto = キーがあれば Qwen、なければ mock / qwen = 強制 / mock = ダミー翻訳
 engine = "auto"
 
 [display]
-# 显示几对字幕（原文+译文算一对），1–6
-pairs = 3
-# 是否显示原文
-show_source = true
-# 字幕位置：bottom / center / top
-position = "bottom"
-# 原文字号（px，1920x1080 画布基准）
-source_size = 26
-# 译文字号（px）
+# 字幕スタイル。コントロールパネルで変更すると settings.json に保存され、こちらより優先されます。
+# 元に戻すには settings.json を削除するか、パネルの「既定に戻す」を押します。
+# フォント：ブラウザと OBS の両方に入っているものをカンマ区切りで
+font_family = '"Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", "Microsoft YaHei", sans-serif'
+# 訳文の文字サイズ / 原文の文字サイズ（px、1920x1080 基準）
 target_size = 44
-# 文字描边宽度（px），0 为不描边
+source_size = 26
+# 文字色 / 縁取りの色 / 縁取りの太さ
+target_color = "#ffffff"
+source_color = "#b9c6d4"
+outline_color = "#000000"
 outline_width = 4
-# 淡入淡出时长（毫秒）
+# 字幕の背景色と不透明度（0 = 完全に透明）
+background_color = "#000000"
+background_alpha = 0
+# 表示位置：bottom / top
+position = "bottom"
+# 同時に表示する文数（現在の文を含む、2〜6）
+pairs = 3
+# 並び順：bottom = 新しい文が下 / top = 新しい文が上
+order = "bottom"
+# 画面端からの距離（％、0〜45）
+margin_percent = 8
+# 文と文の間隔（px、0〜40）
+line_gap = 10
+# 新しい字幕が来ないときに消すまでの時間（ミリ秒、0〜30000、0 = 消さない）
+clear_after_ms = 5000
+# フェード時間（ミリ秒）
 fade_ms = 160
-# 多久没有新字幕就淡出（毫秒），0 表示一直显示
-clear_after_ms = 6000
+# 原文を表示するか
+show_source = true

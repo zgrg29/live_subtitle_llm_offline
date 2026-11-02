@@ -210,12 +210,14 @@ class Hub:
         *,
         max_sentences: int = 100,
         min_interval_ms: int = 120,
+        display: dict[str, Any] | None = None,
     ):
         self._translator = translator
         self._source_language = source_language
         self._targets = tuple(targets)
         self._max_sentences = max_sentences
         self._min_interval_ms = min_interval_ms
+        self.display: dict[str, Any] = dict(display or {})
         self.session: Session | None = None
         self._viewers: set[asyncio.Queue] = set()
         self._lock = asyncio.Lock()
@@ -267,12 +269,40 @@ class Hub:
             raise ValueError("viewer 数量已达上限")
         queue: asyncio.Queue = asyncio.Queue(maxsize=1)
         session = self.session
-        queue.put_nowait(session.snapshot() if session is not None else {"type": "idle"})
+        base = session.snapshot() if session is not None else {"type": "idle"}
+        queue.put_nowait(self._with_display(base))
         self._viewers.add(queue)
         return queue
 
+    def update_display(self, display: dict[str, Any]) -> None:
+        """样式改了：存下来，并立刻推一份当前画面，让 OBS 不用刷新。"""
+        self.display = dict(display)
+        session = self.session
+        self._broadcast(session.snapshot() if session is not None else {"type": "idle"})
+
+    def _with_display(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if payload.get("display") is not None:
+            return payload
+        return {**payload, "display": self.display}
+
     def unsubscribe(self, queue: asyncio.Queue) -> None:
         self._viewers.discard(queue)
+
+    async def probe(self) -> str:
+        """接続テスト用に 1 文だけ翻訳する（セッションは作らない）。"""
+        return await self._translator.translate("こんにちは", self._source_language, self._targets[0])
+
+    async def set_translator(self, translator: Any) -> None:
+        """切换翻译引擎（区域/引擎变更）。调用前必须确保没有正在进行的会话。"""
+        if self.session is not None:
+            raise ValueError("セッション中は翻訳エンジンを変更できません")
+        previous = self._translator
+        self._translator = translator
+        if previous is not None and previous is not translator:
+            try:
+                await previous.aclose()
+            except Exception:
+                pass
 
     def _on_session_change(self, session: Session, payload: dict[str, Any]) -> None:
         # 旧会话的残余事件不能覆盖新会话的画面。
@@ -280,6 +310,7 @@ class Hub:
             self._broadcast(payload)
 
     def _broadcast(self, payload: dict[str, Any]) -> None:
+        payload = self._with_display(payload)
         for queue in list(self._viewers):
             if queue.full():
                 try:
