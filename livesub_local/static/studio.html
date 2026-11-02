@@ -51,14 +51,30 @@
         <div class="meter-box">
           <div class="meter-head">
             <label for="mic-check">入力レベル</label>
-            <output id="mic-db">マイク入力を待っています</output>
+            <span class="row" style="gap:8px">
+              <span class="badge" id="mic-state">待機中</span>
+              <output id="mic-db">マイク入力を待っています</output>
+            </span>
           </div>
-          <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
+          <div class="meter">
+            <div class="meter-fill" id="meter-fill"></div>
+            <div class="meter-threshold" id="meter-threshold"></div>
+          </div>
           <div class="meter-scale"><span>-60</span><span>-36</span><span>-18</span><span>0 dB</span></div>
-          <div class="btn-row" style="margin-top:14px">
-            <button class="btn btn-secondary" id="mic-check" type="button">マイクを確認</button>
+
+          <div class="field" style="margin:16px 0 0">
+            <label for="threshold">発話しきい値（この音量を超えたら「発話中」）</label>
+            <div class="row">
+              <input type="range" id="threshold" min="-60" max="-10" step="1">
+              <output id="threshold-o"></output>
+            </div>
           </div>
-          <p class="hint" style="margin-top:10px">ゲインはこのメーターの表示倍率です。音声はブラウザ内で認識され、外部には送られません。</p>
+
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn btn-secondary" id="mic-check" type="button">マイクを停止</button>
+          </div>
+          <p class="hint" style="margin-top:10px">起動するとマイクを自動で開きます。音声はブラウザ内で認識され、外部には送られません。
+            しきい値はメーター上の目安で、認識のタイミング自体は Chrome が決めます。</p>
         </div>
 
         <div class="btn-row" style="margin-top:20px">
@@ -443,6 +459,34 @@
   }
 
   /* ---------------- マイクレベル ---------------- */
+  var THRESHOLD_KEY = "livesub-threshold";
+
+  function currentThreshold() {
+    return Number($("threshold").value);
+  }
+
+  function updateThresholdLine() {
+    var value = currentThreshold();
+    var percent = ((value + 60) / 60) * 100;
+    $("meter-threshold").style.left = Math.max(0, Math.min(100, percent)) + "%";
+    $("threshold-o").textContent = value + " dBFS";
+  }
+
+  (function initThreshold() {
+    var saved = -40;
+    try {
+      var stored = Number(localStorage.getItem(THRESHOLD_KEY));
+      if (isFinite(stored) && stored >= -60 && stored <= -10) saved = stored;
+    } catch (err) {}
+    $("threshold").value = saved;
+    updateThresholdLine();
+  })();
+
+  $("threshold").addEventListener("input", function () {
+    updateThresholdLine();
+    try { localStorage.setItem(THRESHOLD_KEY, String(currentThreshold())); } catch (err) {}
+  });
+
   function fillDevices() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
     navigator.mediaDevices.enumerateDevices().then(function (devices) {
@@ -472,6 +516,8 @@
     meter.gainNode = null;
     $("meter-fill").style.width = "0%";
     $("mic-db").textContent = "マイク入力を待っています";
+    $("mic-state").textContent = "待機中";
+    $("mic-state").classList.remove("speaking");
     $("mic-check").textContent = "マイクを確認";
   }
 
@@ -488,6 +534,12 @@
     var percent = ((db + 60) / 60) * 100;
     $("meter-fill").style.width = percent.toFixed(1) + "%";
     $("mic-db").textContent = (db <= -59.9 ? "-∞" : db.toFixed(1)) + " dBFS";
+
+    var speaking = db >= currentThreshold();
+    var badge = $("mic-state");
+    badge.textContent = speaking ? "発話中" : "無音";
+    badge.classList.toggle("speaking", speaking);
+
     meter.raf = requestAnimationFrame(drawMeter);
   }
 
@@ -502,6 +554,7 @@
       meter.stream = stream;
       var Ctx = window.AudioContext || window.webkitAudioContext;
       meter.ctx = new Ctx();
+      if (meter.ctx.state === "suspended") meter.ctx.resume().catch(function () {});
       var source = meter.ctx.createMediaStreamSource(stream);
       meter.gainNode = meter.ctx.createGain();
       meter.gainNode.gain.value = Number($("gain").value);
@@ -510,11 +563,12 @@
       meter.analyser.smoothingTimeConstant = 0.6;
       source.connect(meter.gainNode);
       meter.gainNode.connect(meter.analyser);
-      $("mic-check").textContent = "確認を終了";
+      $("mic-check").textContent = "マイクを停止";
       fillDevices();
       drawMeter();
     }).catch(function (error) {
-      say("マイクを使えませんでした：" + error.message, "error");
+      $("mic-state").textContent = "マイク未接続";
+      say("マイクを使えませんでした：" + error.message + "（「マイクを確認」で再試行できます）", "error");
     });
   }
 
@@ -739,6 +793,12 @@
   if (navigator.mediaDevices) {
     navigator.mediaDevices.addEventListener("devicechange", fillDevices);
   }
+
+  // 起動したらマイクを自動で開く（ブラウザが許可を求めます）
+  startMeter();
+  document.addEventListener("click", function () {
+    if (meter.ctx && meter.ctx.state === "suspended") meter.ctx.resume().catch(function () {});
+  }, { once: true });
 })();
 </script>
 </body>

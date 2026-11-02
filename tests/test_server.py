@@ -68,7 +68,7 @@ class ServerTest(unittest.TestCase):
             self.assertIn("LiveSub Local", client.get("/studio").text)
             self.assertIn('id="stage"', client.get("/view").text)
             display = client.get("/api/display").json()
-            self.assertEqual(display["pairs"], 3)
+            self.assertEqual(display["pairs"], 2)
             self.assertEqual(display["position"], "bottom")
             self.assertEqual(client.get("/api/health").json()["engine"], "mock")
 

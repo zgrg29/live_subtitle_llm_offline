@@ -46,9 +46,9 @@ background_color = "#000000"
 background_alpha = 0
 # 表示位置：bottom / top
 position = "bottom"
-# 同時に表示する文数（現在の文を含む、2〜6）
-pairs = 3
-# 並び順：bottom = 新しい文が下 / top = 新しい文が上
+# 同時に表示する組数（原文 + 訳文で 1 組、2〜6、既定 2）
+pairs = 2
+# 並び順：bottom = 新しい文が下（下から上へ流れる）/ top = 新しい文が上
 order = "bottom"
 # 画面端からの距離（％、0〜45）
 margin_percent = 8

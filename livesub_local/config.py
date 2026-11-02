@@ -116,8 +116,8 @@ class DisplayConfig:
     background_color: str = "#000000"
     background_alpha: int = 0    # 0-100
     position: str = "bottom"     # bottom | top
-    pairs: int = 3               # 2-6
-    order: str = "bottom"        # bottom=新しい文が下 / top=上
+    pairs: int = 2               # 2-6（既定 2 対 = 原文 + 訳文が 2 組）
+    order: str = "bottom"        # bottom=新しい文が下（下から上へ）/ top=上から下へ
     margin_percent: int = 8      # 0-45
     line_gap: int = 10           # 0-40
     clear_after_ms: int = 5000   # 0-30000

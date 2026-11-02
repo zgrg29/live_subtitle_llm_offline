@@ -76,7 +76,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_defaults_are_usable(self):
         loaded = load_config(path=self.root / "missing.toml", api_path=self.api)
-        self.assertEqual(loaded.display.pairs, 3)
+        self.assertEqual(loaded.display.pairs, 2)
         self.assertEqual(loaded.subtitle.source_language, "ja")
         self.assertEqual(loaded.subtitle.target_languages, ("zh",))
 

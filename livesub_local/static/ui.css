@@ -233,6 +233,13 @@ select option { background: var(--card); color: var(--text); }
   background: linear-gradient(90deg, #30d158 0%, #30d158 62%, #ffd60a 80%, #ff453a 100%);
   transition: width .06s linear;
 }
+.meter-threshold {
+  position: absolute; top: -2px; bottom: -2px; width: 2px; left: 33%;
+  background: var(--meter-peak); opacity: .85; border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.badge.speaking { background: #1d7a4c; border-color: #1d7a4c; color: #fff; }
+html[data-theme="dark"] .badge.speaking { background: #30d158; border-color: #30d158; color: #06210f; }
 .meter-scale { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted-2); }
 
 /* ---- 字幕样例 ---- */
