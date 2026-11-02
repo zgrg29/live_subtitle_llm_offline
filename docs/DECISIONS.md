@@ -225,3 +225,17 @@
 **代价**：exe 从 16 MB 变 ~94 MB（Node 运行时）；SEA 构建要联网下载 postject；
 两套服务端要同步维护，直到删掉 Python 版。
 **何时推翻**：Node 版验收通过并稳定后，删除 `livesub_local/*.py`，把 `static/` 挪到根目录。
+
+---
+
+## D-020 开浏览器优先用 Chrome/Edge 的 `--new-window`
+
+**日期**：2026-11-02
+**决定**：启动时先找本机 Chrome / Edge 的 exe，用 `--new-window <url>` 开一个**新窗口**；
+找不到再退回 `rundll32 url.dll,FileProtocolHandler` → `explorer.exe` → `cmd /c start`。
+Python 版和 Node 版用同一套顺序。
+**理由**：用户反馈“没自动打开浏览器”。实测 `rundll32` 每次都执行成功（退出码 0）并新起 Chrome
+进程，但在已有窗口里只加了个后台标签、窗口没有到前台，看起来就像没打开。`--new-window`
+会真的弹出一个新窗口，最直观。
+**代价**：会强制用 Chrome/Edge（本项目本来也只支持这两个）；如果两个都没装，退回 ShellExecute。
+**何时推翻**：要做托盘/单实例时，改成复用已有窗口并 `AppActivate`。

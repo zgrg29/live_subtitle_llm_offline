@@ -399,6 +399,27 @@ def _wait_for_port(host: str, port: int, timeout: float = 25.0) -> bool:
     return False
 
 
+def _find_chromium() -> str | None:
+    """优先用 Chrome/Edge 的 --new-window：比“在已有窗口里加后台标签”更容易看见。"""
+    roots = (
+        os.environ.get("ProgramFiles"),
+        os.environ.get("ProgramFiles(x86)"),
+        os.environ.get("LOCALAPPDATA"),
+    )
+    relatives = (
+        os.path.join("Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join("Microsoft", "Edge", "Application", "msedge.exe"),
+    )
+    for root in roots:
+        if not root:
+            continue
+        for relative in relatives:
+            candidate = os.path.join(root, relative)
+            if os.path.isfile(candidate):
+                return candidate
+    return None
+
+
 def _launch_browser(url: str) -> str | None:
     """Windows 用 ShellExecute 系列打开默认浏览器；返回实际用到的方式。"""
     if os.name != "nt":
@@ -406,6 +427,14 @@ def _launch_browser(url: str) -> str | None:
             return "webbrowser" if webbrowser.open_new_tab(url) else None
         except Exception:
             return None
+
+    browser = _find_chromium()
+    if browser:
+        try:
+            subprocess.Popen([browser, "--new-window", url], close_fds=True)
+            return f"new window: {os.path.basename(browser)}"
+        except OSError:
+            pass
 
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     # 1) rundll32 url.dll,FileProtocolHandler：参考 BiliGiftDrop 的做法，最接近资源管理器双击。

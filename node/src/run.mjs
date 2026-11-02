@@ -1,8 +1,66 @@
 // 启动入口：日语横幅、端口检查、自动开浏览器。
 import net from "node:net";
+import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { DEFAULT_API_PATH, appDir, loadConfig } from "./config.mjs";
 import { createApp } from "./server.mjs";
+
+// 浏览器用 Chrome / Edge 的新窗口打开：比“在已有窗口里加一个后台标签”更容易被看见。
+function findChromiumBrowser() {
+  const roots = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.LOCALAPPDATA];
+  const relatives = [
+    "Google/Chrome/Application/chrome.exe",
+    "Microsoft/Edge/Application/msedge.exe",
+  ];
+  for (const root of roots) {
+    if (!root) continue;
+    for (const relative of relatives) {
+      const full = path.join(root, relative);
+      try {
+        if (fs.existsSync(full)) return full;
+      } catch {
+        // 继续找下一个
+      }
+    }
+  }
+  return null;
+}
+
+function launchBrowser(url) {
+  const browser = findChromiumBrowser();
+  if (browser) {
+    try {
+      const child = spawn(browser, ["--new-window", url], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: false,
+      });
+      child.unref();
+      return `new window: ${path.basename(browser)}`;
+    } catch {
+      // 落到下面的 ShellExecute 方案
+    }
+  }
+
+  const candidates = process.platform === "win32"
+    ? [
+        ["rundll32.exe", ["url.dll,FileProtocolHandler", url]],
+        ["explorer.exe", [url]],
+        ["cmd.exe", ["/c", "start", "", url]],
+      ]
+    : [["xdg-open", [url]]];
+  for (const [command, args] of candidates) {
+    try {
+      const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
+      child.unref();
+      return command.replace(/\.exe$/, "");
+    } catch {
+      // 下一个
+    }
+  }
+  return null;
+}
 
 function portAvailable(host, port) {
   return new Promise((resolve) => {
@@ -27,25 +85,6 @@ function waitForPort(host, port, timeoutMs = 25000) {
     };
     attempt();
   });
-}
-
-function launchBrowser(url) {
-  const candidates = process.platform === "win32"
-    ? [
-        ["rundll32.exe", ["url.dll,FileProtocolHandler", url]],
-        ["cmd.exe", ["/c", "start", "", url]],
-      ]
-    : [["xdg-open", [url]]];
-  for (const [command, args] of candidates) {
-    try {
-      const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
-      child.unref();
-      return command.replace(/\.exe$/, "");
-    } catch {
-      // 下一个
-    }
-  }
-  return null;
 }
 
 async function openBrowser(host, port) {
