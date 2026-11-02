@@ -217,6 +217,9 @@
 
 ## D-019 服务端用 Node.js 重写（与 Python 版并行，切换前不动默认）
 
+> **状态：已废弃（2026-11-02）**。Node 版使用体验不如 Python 版，整体移到 `js` 分支；
+> `main` 只保留 Python 实现。以下内容只作历史记录。
+
 **日期**：2026-11-02
 **决定**：在 `node/` 下重写服务端（零 npm 依赖：`node:http` + 自写 WebSocket + 自写极简 TOML），
 前端 `static/` 由两个版本共用；打包用 Node SEA（和 BiliGiftDrop 同一套：下载 postject、
@@ -229,6 +232,8 @@
 ---
 
 ## D-020 开浏览器优先用 Chrome/Edge 的 `--new-window`
+
+> **状态：保留（Python 版仍在使用）**；Node 版已移到 `js` 分支，但这条决定两边都适用。
 
 **日期**：2026-11-02
 **决定**：启动时先找本机 Chrome / Edge 的 exe，用 `--new-window <url>` 开一个**新窗口**；

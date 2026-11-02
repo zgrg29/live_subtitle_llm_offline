@@ -136,19 +136,6 @@ python -m venv .venv
 exe のビルドは `build_exe.bat`（PyInstaller）。詳しい構成は
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照してください（開発メモは中国語です）。
 
-### Node.js 版（開発中）
-
-サービス部分の Node.js 実装が `node/` にあります（npm 依存なし）。画面は Python 版と共通です。
-
-```powershell
-cd node
-node src/run.mjs
-node --test test/
-node scripts/build-windows.mjs   :: -> dist/LiveSubLocal.exe（約 94 MB）
-```
-
-現在の既定の配布物は Python 版です。Node 版は実機確認が済んだら切り替えます。
-
 ## ライセンス
 
 MIT
