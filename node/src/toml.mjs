@@ -28,32 +28,45 @@ export function parseToml(text) {
 }
 
 function stripComment(line) {
-  let inString = false;
+  let quote = "";
   let escaped = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (escaped) { escaped = false; continue; }
-    if (ch === "\\" && inString) { escaped = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
-    if (ch === "#" && !inString) return line.slice(0, i);
+    if (quote === '"' && ch === "\\") { escaped = true; continue; }
+    if (ch === '"' || ch === "'") {
+      if (quote === ch) quote = "";
+      else if (!quote) quote = ch;
+      continue;
+    }
+    if (ch === "#" && !quote) return line.slice(0, i);
   }
   return line;
 }
 
 function findEquals(line) {
-  let inString = false;
+  let quote = "";
   let escaped = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (escaped) { escaped = false; continue; }
-    if (ch === "\\" && inString) { escaped = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
-    if (ch === "=" && !inString) return i;
+    if (quote === '"' && ch === "\\") { escaped = true; continue; }
+    if (ch === '"' || ch === "'") {
+      if (quote === ch) quote = "";
+      else if (!quote) quote = ch;
+      continue;
+    }
+    if (ch === "=" && !quote) return i;
   }
   return -1;
 }
 
 function parseValue(text, line) {
+  // 双引号：支持转义；单引号：TOML 的 literal string，原样保留（不处理转义）。
+  if (text.startsWith("'")) {
+    if (text.length < 2 || !text.endsWith("'")) throw new Error(`字符串没有结束：${line}`);
+    return text.slice(1, -1);
+  }
   if (text.startsWith('"')) {
     if (!text.endsWith('"') || text.length < 2) throw new Error(`字符串没有结束：${line}`);
     try {
@@ -70,6 +83,7 @@ function parseValue(text, line) {
     if (!inner) return [];
     return splitArray(inner).map((item) => {
       const value = item.trim();
+      if (value.startsWith("'")) return value.slice(1, -1);
       if (!value.startsWith('"')) throw new Error(`数组只支持字符串：${line}`);
       try {
         return JSON.parse(value);
@@ -86,13 +100,18 @@ function parseValue(text, line) {
 function splitArray(inner) {
   const parts = [];
   let current = "";
-  let inString = false;
+  let quote = "";
   let escaped = false;
   for (const ch of inner) {
     if (escaped) { current += ch; escaped = false; continue; }
-    if (ch === "\\" && inString) { current += ch; escaped = true; continue; }
-    if (ch === '"') { inString = !inString; current += ch; continue; }
-    if (ch === "," && !inString) { parts.push(current); current = ""; continue; }
+    if (quote === '"' && ch === "\\") { current += ch; escaped = true; continue; }
+    if (ch === '"' || ch === "'") {
+      if (quote === ch) quote = "";
+      else if (!quote) quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === "," && !quote) { parts.push(current); current = ""; continue; }
     current += ch;
   }
   parts.push(current);

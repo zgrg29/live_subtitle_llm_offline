@@ -89,6 +89,25 @@ test("toml parser keeps # inside strings and reads arrays", () => {
   assert.equal(parsed.nested.key, "v");
 });
 
+test("toml parser reads single-quoted literal strings", () => {
+  // config.example.toml 的 font_family 就是这种写法（Python tomllib 支持）。
+  const parsed = parseToml(
+    "font_family = '\"Hiragino Sans\", \"Yu Gothic UI\", sans-serif'\ncolor = '#ffffff'\n",
+  );
+  assert.equal(parsed.font_family, '"Hiragino Sans", "Yu Gothic UI", sans-serif');
+  assert.equal(parsed.color, "#ffffff");
+});
+
+test("example configs parse", () => {
+  const root = path.resolve(HERE, "..", "..");
+  const config = loadConfig(path.join(root, "config.example.toml"), path.join(root, "api.example.toml"));
+  assert.equal(config.display.pairs, 2);
+  assert.match(config.display.font_family, /Hiragino/);
+  assert.equal(config.subtitle.sourceLanguage, "ja");
+  assert.deepEqual(config.subtitle.targetLanguages, ["zh"]);
+  assert.equal(config.qwen.region, "cn");
+});
+
 test("normalizeDisplay rejects unknown fields", () => {
   assert.throws(() => normalizeDisplay({ nope: 1 }, DISPLAY_DEFAULTS), /未知的样式字段/);
 });

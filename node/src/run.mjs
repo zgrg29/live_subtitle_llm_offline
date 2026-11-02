@@ -60,21 +60,33 @@ async function openBrowser(host, port) {
   else console.log(`[情報] ブラウザを自動で開けませんでした。手動で開いてください: ${url}`);
 }
 
+async function fail(lines) {
+  for (const line of lines) console.log(line);
+  process.exitCode = 1;
+  // ダブルクリック起動だと、エラーが見えないまま窓が閉じてしまう。TTY のときだけ待つ。
+  if (process.stdin.isTTY) {
+    console.log("\nEnter キーを押すと閉じます…");
+    await new Promise((resolve) => process.stdin.once("data", resolve));
+  }
+}
+
 async function main() {
   let config;
   try {
     config = loadConfig();
   } catch (error) {
-    console.log(`[エラー] 設定ファイルに問題があります: ${error.message}`);
-    console.log(`         ${DEFAULT_API_PATH} と config.toml の書き方を確認してください。`);
-    process.exitCode = 1;
+    await fail([
+      `[エラー] 設定ファイルに問題があります: ${error.message}`,
+      `         ${DEFAULT_API_PATH} と config.toml の書き方を確認してください。`,
+    ]);
     return;
   }
 
   const { host, port, openBrowser: autoOpen } = config.server;
   if (!(await portAvailable(host, port))) {
-    console.log(`[エラー] ポート ${port} は使用中です。config.toml の [server].port を変えてください。`);
-    process.exitCode = 1;
+    await fail([
+      `[エラー] ポート ${port} は使用中です。config.toml の [server].port を変えてください。`,
+    ]);
     return;
   }
 

@@ -172,6 +172,31 @@ WebSocket 送句 -> ［mock·zh］こんばんは；样式更新能推到 /v1/vi
 - `node --test test/` 在本会话的沙箱里会因 `spawn EPERM` 失败（环境限制），
   验证时用了 `--test-isolation=none` + 显式文件列表；普通机器不受影响。
 
+### 已修：双击 exe 闪退（2026-11-02）
+
+用户双击 `node\dist\LiveSubLocal.exe` 时 CMD 闪一下就没，浏览器也没开。原因不是打包，是
+**自写的 TOML 解析器不支持单引号 literal string**：`config.example.toml` 的
+`font_family = '"Hiragino Sans", ...'` 读不了 → `loadConfig()` 抛错 → 进程退出。
+Python 版没事，因为 `tomllib` 两种引号都支持。
+
+修复：
+
+- `node/src/toml.mjs` 支持 `'...'` 字面量（字符串、数组元素、注释识别都按引号状态处理）。
+- `node/src/run.mjs` 在致命错误时（配置错误/端口占用），如果是在控制台里启动，
+  会打印 `Enter キーを押すと閉じます…` 并等待，不再让窗口一闪而过。
+- 新增两个测试：单引号字符串、直接解析 `config.example.toml` + `api.example.toml`（30 个用例）。
+
+修复后实测（`node\dist` 里直接跑）：
+
+```
+[情報] 起動後にブラウザを自動で開きます（open_browser = true）。
+[情報] 待ち受け開始 http://127.0.0.1:8765
+[情報] ブラウザを開きました（rundll32）: http://127.0.0.1:8765/studio
+/api/health -> 200
+```
+
+exe 大小 93,971,968 字节。
+
 ### 已知问题
 
 - 两套服务端要同步维护（前端共用一份），切换前改协议要改两处。
